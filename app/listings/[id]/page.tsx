@@ -1,0 +1,330 @@
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
+import SiteHeader from "@/components/SiteHeader";
+import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
+import { formatPrice, listingImages } from "@/utils/listings";
+import { createClient } from "@/utils/supabase/server";
+import ContactButton, { type ContactStatus } from "./contact-button";
+
+const listedOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" });
+
+export default function ListingPage({ params }: PageProps<"/listings/[id]">) {
+  return (
+    <div className="flex min-h-screen flex-1 flex-col bg-white font-sans text-neutral-900">
+      <SiteHeader />
+      {/* Bottom padding leaves room for the fixed contact bar on small screens. */}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pb-16">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2"
+        >
+          <span aria-hidden="true">←</span> All rooms
+        </Link>
+
+        <div className="mt-5">
+          {/* The id comes from the URL and the data from the database, so
+              both are only known at request time. */}
+          <Suspense fallback={<DetailSkeleton />}>
+            <Listing params={params} />
+          </Suspense>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+async function Listing({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  // Anything that is not a uuid cannot be a listing; skip the query.
+  if (!UUID.test(id)) notFound();
+
+  await connection();
+  const supabase = await createClient();
+  const { data: listing, error } = await supabase
+    .from("listings")
+    .select(
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, created_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error("Could not load the listing.");
+  if (!listing) notFound();
+
+  const images = listingImages(listing.image_urls);
+  const price = formatPrice(listing.price_per_week);
+
+  // Work out, on the server, what the contact button should be for whoever is
+  // looking. This only decides what to show: the server action and the
+  // database both re-check before a conversation is created.
+  const { data: auth } = await supabase.auth.getClaims();
+  const viewerId = auth?.claims?.sub;
+  let status: ContactStatus;
+  let conflicts: ReturnType<typeof lifestyleConflicts> = [];
+
+  if (!viewerId) {
+    status = {
+      kind: "guest",
+      loginHref: `/login?next=${encodeURIComponent(`/listings/${listing.id}`)}`,
+    };
+  } else if (viewerId === listing.landlord_id) {
+    status = { kind: "own-listing" };
+  } else {
+    const [{ data: viewer }, { data: existing }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("role, is_smoker, is_shift_worker, tolerates_noise")
+        .eq("id", viewerId)
+        .maybeSingle(),
+      supabase
+        .from("conversations")
+        .select("id")
+        .eq("listing_id", listing.id)
+        .eq("tenant_id", viewerId)
+        .maybeSingle(),
+    ]);
+
+    if (!viewer || viewer.role !== "tenant") {
+      status = { kind: "landlord" };
+    } else if (existing) {
+      status = { kind: "existing", href: `/messages?c=${existing.id}` };
+    } else {
+      conflicts = lifestyleConflicts(viewer, listing);
+      status =
+        conflicts.length > 0
+          ? { kind: "mismatch" }
+          : { kind: "can-contact", listingId: listing.id };
+    }
+  }
+  const conflictingRules = new Set<string>(conflicts.map((pair) => pair.rule));
+
+  return (
+    <>
+      <title>{`${listing.title} in ${listing.suburb}`}</title>
+
+      <Gallery images={images} title={listing.title} />
+
+      <div className="mt-8 grid grid-cols-1 gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0">
+          <h1 className="text-[28px] leading-9 font-semibold tracking-tight break-words">
+            {listing.title}
+          </h1>
+          <p className="mt-2 flex items-center gap-1.5 text-neutral-600">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-4 w-4 shrink-0 fill-none stroke-current stroke-2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>
+              Room in {listing.suburb}
+              <span className="text-neutral-400">
+                {" "}
+                · Listed {listedOn.format(new Date(listing.created_at))}
+              </span>
+            </span>
+          </p>
+          <p className="mt-4 text-xl">
+            <span className="font-semibold">{price}</span>
+            <span className="text-neutral-500"> / week</span>
+          </p>
+
+          <section className="mt-8 border-t border-neutral-200 pt-8">
+            <h2 className="text-xl font-semibold">About this room</h2>
+            {listing.description ? (
+              <p className="mt-3 leading-7 break-words whitespace-pre-line text-neutral-700">
+                {listing.description}
+              </p>
+            ) : (
+              <p className="mt-3 text-neutral-500">
+                The landlord has not added a description yet.
+              </p>
+            )}
+          </section>
+
+          <section className="mt-8 border-t border-neutral-200 pt-8">
+            <h2 className="text-xl font-semibold">House rules and lifestyle</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              How this house lives, so you can tell if it suits you.
+            </p>
+            <ul className="mt-5 divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
+              {LIFESTYLE_RULES.map((rule) => {
+                const allowed = listing[rule.key];
+                const state = allowed ? rule.yes : rule.no;
+                return (
+                  <li key={rule.key} className="flex items-center gap-4 p-4">
+                    <span
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                        allowed
+                          ? "bg-neutral-900 text-white"
+                          : "bg-neutral-100 text-neutral-400"
+                      }`}
+                    >
+                      <LifestyleIcon path={rule.icon} className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{rule.title}</p>
+                      <p className="text-sm text-neutral-600">{state.text}</p>
+                      {conflictingRules.has(rule.key) && (
+                        <p className="mt-0.5 text-sm font-medium text-rose-700">
+                          Conflicts with your profile
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        allowed
+                          ? "bg-emerald-50 text-emerald-800"
+                          : "bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        className="h-3.5 w-3.5 fill-none stroke-current stroke-[2.5]"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path
+                          d={allowed ? "M5 12.5l4.5 4.5L19 7.5" : "M6 6l12 12M18 6 6 18"}
+                        />
+                      </svg>
+                      {state.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+
+        {/* Large screens: sticky card beside the content. */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 rounded-2xl border border-neutral-200 p-6 shadow-[0_8px_28px_rgba(0,0,0,0.08)]">
+            <p className="text-2xl">
+              <span className="font-semibold">{price}</span>
+              <span className="text-base text-neutral-500"> / week</span>
+            </p>
+            <p className="mt-1 text-sm text-neutral-500">
+              Room in {listing.suburb}
+            </p>
+            <div className="mt-5">
+              <ContactButton status={status} fullWidth />
+            </div>
+            {status.kind === "mismatch" && (
+              <div className="mt-4 text-sm text-neutral-600">
+                <ul className="space-y-1">
+                  {conflicts.map((pair) => (
+                    <li key={pair.rule}>{pair.reason}</li>
+                  ))}
+                </ul>
+                <Link
+                  href="/dashboard"
+                  className="mt-2 inline-block font-semibold text-neutral-900 underline underline-offset-2"
+                >
+                  Review your lifestyle answers
+                </Link>
+              </div>
+            )}
+            {status.kind === "guest" && (
+              <p className="mt-3 text-center text-xs text-neutral-500">
+                You need a tenant account to message landlords.
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* Small screens: the same action, fixed to the bottom edge. */}
+      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-4 border-t border-neutral-200 bg-white px-4 py-3 lg:hidden">
+        <p>
+          <span className="text-lg font-semibold">{price}</span>
+          <span className="text-sm text-neutral-500"> / week</span>
+        </p>
+        <ContactButton status={status} />
+      </div>
+    </>
+  );
+}
+
+// Where each photo sits in the 4 x 2 desktop grid, by number of photos.
+const LEAD = "md:col-span-2 md:row-span-2";
+const GALLERY_SPANS: Record<number, string[]> = {
+  1: ["md:col-span-4 md:row-span-2"],
+  2: [LEAD, LEAD],
+  3: [LEAD, "md:col-span-2", "md:col-span-2"],
+  4: [LEAD, "md:col-span-2", "", ""],
+  5: [LEAD, "", "", "", ""],
+};
+
+function Gallery({ images, title }: { images: string[]; title: string }) {
+  if (images.length === 0) {
+    return (
+      <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-100 text-neutral-400 md:h-72">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-10 w-10 fill-none stroke-current stroke-[1.5]"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9.5 21v-6h5v6" />
+        </svg>
+        <span className="text-sm">No photos yet</span>
+      </div>
+    );
+  }
+
+  const shown = images.slice(0, 5);
+  const spans = GALLERY_SPANS[shown.length];
+  const single = shown.length === 1;
+
+  return (
+    // Small screens: a swipeable row. Medium and up: one large photo with the
+    // rest tiled beside it.
+    <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl [scrollbar-width:none] md:grid md:h-[440px] md:grid-cols-4 md:grid-rows-2 md:overflow-hidden">
+      {shown.map((url, index) => (
+        <li
+          key={url}
+          className={`relative aspect-[4/3] shrink-0 snap-center overflow-hidden bg-neutral-100 md:aspect-auto md:w-auto ${
+            single ? "w-full" : "w-[88%]"
+          } ${spans[index]}`}
+        >
+          <Image
+            src={url}
+            alt={`${title}, photo ${index + 1} of ${shown.length}`}
+            fill
+            sizes={
+              single
+                ? "(min-width: 1152px) 1088px, 100vw"
+                : index === 0 || shown.length === 2
+                  ? "(min-width: 1152px) 544px, (min-width: 768px) 50vw, 88vw"
+                  : "(min-width: 1152px) 272px, (min-width: 768px) 25vw, 88vw"
+            }
+            loading={index === 0 ? "eager" : "lazy"}
+            className="object-cover"
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="animate-pulse" aria-hidden="true">
+      <div className="aspect-[4/3] rounded-2xl bg-neutral-200 md:aspect-auto md:h-[440px]" />
+      <div className="mt-8 h-8 w-2/3 rounded bg-neutral-200" />
+      <div className="mt-3 h-4 w-1/3 rounded bg-neutral-100" />
+      <div className="mt-8 h-24 rounded bg-neutral-100" />
+    </div>
+  );
+}

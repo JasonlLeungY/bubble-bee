@@ -1,0 +1,21 @@
+// The site logo: a small, friendly yellow bee.
+export default function BeeLogo({ className = "h-8 w-8" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 32 32" className={className}>
+      <path d="M11.2 9.2 9.4 5.6M15.2 8.4l1-3.6" fill="none" stroke="#171717" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="9.2" cy="5.1" r="1.2" fill="#171717"/>
+      <circle cx="16.3" cy="4.4" r="1.2" fill="#171717"/>
+      <ellipse cx="19.5" cy="9.2" rx="4.2" ry="5.6" transform="rotate(-24 19.5 9.2)" fill="#E0F2FE" stroke="#171717" strokeWidth="1.2"/>
+      <ellipse cx="24.4" cy="11.4" rx="3.3" ry="4.6" transform="rotate(22 24.4 11.4)" fill="#E0F2FE" stroke="#171717" strokeWidth="1.2"/>
+      <path d="M27 19.4 30.4 20l-3.3 1.7z" fill="#171717" stroke="#171717" strokeWidth="1" strokeLinejoin="round"/>
+      <ellipse cx="16" cy="19.5" rx="11" ry="8.5" fill="#FACC15"/>
+      <path d="M18.2 11.2c1 0 2 .15 3 .45v15.7c-1 .3-2 .45-3 .45zM23.6 13.3c.9.7 1.6 1.5 2.2 2.4v7.6c-.6.9-1.3 1.7-2.2 2.4z" fill="#171717"/>
+      <ellipse cx="16" cy="19.5" rx="11" ry="8.5" fill="none" stroke="#171717" strokeWidth="1.4"/>
+      <circle cx="9.4" cy="18" r="1.25" fill="#171717"/>
+      <circle cx="14" cy="18" r="1.25" fill="#171717"/>
+      <path d="M10 21.4c1 1.3 2.6 1.3 3.6 0" fill="none" stroke="#171717" strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="7.4" cy="20.8" r="1.1" fill="#FB7185" opacity=".75"/>
+      <circle cx="16" cy="20.8" r="1.1" fill="#FB7185" opacity=".75"/>
+    </svg>
+  );
+}
