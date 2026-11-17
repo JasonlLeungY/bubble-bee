@@ -25,6 +25,17 @@ In your Supabase project, open the SQL Editor and run these files in order:
 2. `supabase/migrations/20261115010000_listings.sql`
 3. `supabase/migrations/20261115020000_messaging.sql`
 
+Each script can only be run once. If one fails with `already exists`, nothing
+was changed (a failed script is undone as a whole). Run `supabase/check.sql`
+to see what is already set up:
+
+- Tables showing the columns above (`first_name`, `price_per_week`,
+  `content`...) are done; run only the scripts for the missing ones.
+- `display_name`, `rent_amount` or a `listing_images` table mean an old draft
+  schema. Run `supabase/reset.sql`, delete your test users under
+  Authentication, Users, then run all three scripts. The reset deletes all
+  app data, so never run it on a live project with real users.
+
 ## Run locally
 
 Copy `.env.example` to `.env.local` and fill in your project URL and
