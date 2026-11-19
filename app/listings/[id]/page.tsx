@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
+import SuburbMapButton from "@/components/SuburbMapButton";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
@@ -47,7 +48,7 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, created_at",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, created_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -113,7 +114,7 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
           <h1 className="text-[28px] leading-9 font-semibold tracking-tight break-words">
             {listing.title}
           </h1>
-          <p className="mt-2 flex items-center gap-1.5 text-neutral-600">
+          <div className="mt-2 flex items-center gap-1.5 text-neutral-600">
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
@@ -124,14 +125,18 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
               <path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
-            <span>
-              Room in {listing.suburb}
+            <div>
+              <SuburbMapButton
+                suburb={listing.suburb}
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+              />
               <span className="text-neutral-400">
                 {" "}
                 · Listed {listedOn.format(new Date(listing.created_at))}
               </span>
-            </span>
-          </p>
+            </div>
+          </div>
           <p className="mt-4 text-xl">
             <span className="font-semibold">{price}</span>
             <span className="text-neutral-500"> / week</span>
@@ -213,9 +218,14 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
               <span className="font-semibold">{price}</span>
               <span className="text-base text-neutral-500"> / week</span>
             </p>
-            <p className="mt-1 text-sm text-neutral-500">
-              Room in {listing.suburb}
-            </p>
+            <div className="mt-1 text-sm text-neutral-500">
+              <SuburbMapButton
+                suburb={listing.suburb}
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+                className="text-sm"
+              />
+            </div>
             <div className="mt-5">
               <ContactButton status={status} fullWidth />
             </div>
