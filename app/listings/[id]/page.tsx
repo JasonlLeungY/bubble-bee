@@ -19,13 +19,6 @@ export default function ListingPage({ params }: PageProps<"/listings/[id]">) {
       <SiteHeader />
       {/* Bottom padding leaves room for the fixed contact bar on small screens. */}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pb-16">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2"
-        >
-          <span aria-hidden="true">←</span> All rooms
-        </Link>
-
         <div className="mt-5">
           {/* The id comes from the URL and the data from the database, so
               both are only known at request time. */}

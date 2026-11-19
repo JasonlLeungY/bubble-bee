@@ -38,7 +38,7 @@ export default function MessagesPage({
 }: PageProps<"/messages">) {
   return (
     // Fixed to the viewport height so the chat scrolls inside its own pane.
-    <div className="flex h-dvh flex-col bg-white font-sans text-neutral-900">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col bg-white font-sans text-neutral-900">
       <SiteHeader />
       <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-[26px] leading-8 font-semibold tracking-tight">

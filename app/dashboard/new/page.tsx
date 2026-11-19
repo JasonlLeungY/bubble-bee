@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -12,12 +11,6 @@ export default function NewListingPage() {
   return (
     <main className="min-h-screen flex-1 bg-white px-4 py-10 font-sans text-neutral-900">
       <div className="mx-auto w-full max-w-2xl">
-        <Link
-          href="/dashboard"
-          className="text-sm font-semibold underline underline-offset-2"
-        >
-          Back to dashboard
-        </Link>
         <h1 className="mt-4 text-[26px] leading-8 font-semibold tracking-tight">
           Create a listing
         </h1>
