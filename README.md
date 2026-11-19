@@ -25,7 +25,7 @@ In your Supabase project, open the SQL Editor and run these files in order:
 2. `supabase/migrations/20261115010000_listings.sql`
 3. `supabase/migrations/20261115020000_messaging.sql`
 
-Draft, do not run yet: `supabase/migrations/20261119000000_monetization_schema.sql` (paid boosts and subscriptions) is waiting for the owner's decisions.
+Draft, do not run yet: `supabase/migrations/20261122000000_monetization_schema.sql` (paid boosts and subscriptions) is waiting for the owner's decisions.
 
 Each script can only be run once. If one fails with `already exists`, nothing
 was changed (a failed script is undone as a whole). Run `supabase/check.sql`

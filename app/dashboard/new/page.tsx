@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { createClient } from "@/utils/supabase/server";
-import ListingForm from "./listing-form";
+import ListingForm from "@/components/ListingForm";
 
 export const metadata: Metadata = { title: "Create a listing" };
 
@@ -23,7 +23,7 @@ export default function NewListingPage() {
             fallback={<p className="text-sm text-neutral-500">Loading…</p>}
           >
             <LandlordOnly>
-              <ListingForm />
+              <ListingForm mode="create" />
             </LandlordOnly>
           </Suspense>
         </div>

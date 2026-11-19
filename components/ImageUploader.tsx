@@ -21,6 +21,8 @@ type ImageUploaderProps = {
   /** When set, each URL is also rendered as a hidden input with this name. */
   name?: string;
   maxImages?: number;
+  /** Photos already saved on the listing. Removing one here does not delete the file; saving does. */
+  savedUrls?: string[];
 };
 
 export default function ImageUploader({
@@ -29,6 +31,7 @@ export default function ImageUploader({
   onUploadingChange,
   name,
   maxImages = 5,
+  savedUrls = [],
 }: ImageUploaderProps) {
   const [pending, setPending] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
@@ -110,6 +113,7 @@ export default function ImageUploader({
   async function removeImage(url: string) {
     onChange(value.filter((item) => item !== url));
     setErrors([]);
+    if (savedUrls.includes(url)) return;
     // Best effort: also delete the file so it does not linger in the bucket.
     const path = url.split(`/object/public/${BUCKET}/`)[1];
     if (path) {

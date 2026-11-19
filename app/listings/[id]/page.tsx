@@ -12,8 +12,9 @@ import { createClient } from "@/utils/supabase/server";
 import ContactButton, { type ContactStatus } from "./contact-button";
 
 const listedOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" });
+const availableOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeZone: "UTC" });
 
-export default function ListingPage({ params }: PageProps<"/listings/[id]">) {
+export default function ListingPage({ params, searchParams }: PageProps<"/listings/[id]">) {
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-white font-sans text-neutral-900">
       <SiteHeader />
@@ -23,7 +24,7 @@ export default function ListingPage({ params }: PageProps<"/listings/[id]">) {
           {/* The id comes from the URL and the data from the database, so
               both are only known at request time. */}
           <Suspense fallback={<DetailSkeleton />}>
-            <Listing params={params} />
+            <Listing params={params} searchParams={searchParams} />
           </Suspense>
         </div>
       </main>
@@ -31,8 +32,15 @@ export default function ListingPage({ params }: PageProps<"/listings/[id]">) {
   );
 }
 
-async function Listing({ params }: { params: Promise<{ id: string }> }) {
+async function Listing({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: PageProps<"/listings/[id]">["searchParams"];
+}) {
   const { id } = await params;
+  const { saved } = await searchParams;
   // Anything that is not a uuid cannot be a listing; skip the query.
   if (!UUID.test(id)) notFound();
 
@@ -41,7 +49,7 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, created_at",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, created_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -51,6 +59,10 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
 
   const images = listingImages(listing.image_urls);
   const price = formatPrice(listing.price_per_week);
+  const availableText = listing.available_from
+    ? availableOn.format(new Date(`${listing.available_from}T00:00:00Z`))
+    : "Now";
+  const bondText = listing.bond_amount === null ? "Not set" : formatPrice(listing.bond_amount);
 
   // Work out, on the server, what the contact button should be for whoever is
   // looking. This only decides what to show: the server action and the
@@ -66,7 +78,7 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
       loginHref: `/login?next=${encodeURIComponent(`/listings/${listing.id}`)}`,
     };
   } else if (viewerId === listing.landlord_id) {
-    status = { kind: "own-listing" };
+    status = { kind: "owner", listingId: listing.id };
   } else {
     const [{ data: viewer }, { data: existing }] = await Promise.all([
       supabase
@@ -100,6 +112,11 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
     <>
       <title>{`${listing.title} in ${listing.suburb}`}</title>
 
+      {saved === "1" && (
+        <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+          Changes saved.
+        </p>
+      )}
       <Gallery images={images} title={listing.title} />
 
       <div className="mt-8 grid grid-cols-1 gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -134,6 +151,20 @@ async function Listing({ params }: { params: Promise<{ id: string }> }) {
             <span className="font-semibold">{price}</span>
             <span className="text-neutral-500"> / week</span>
           </p>
+          <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <dt className="text-neutral-500">Available</dt>
+              <dd className="font-semibold">{availableText}</dd>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <dt className="text-neutral-500">Bond</dt>
+              <dd className="font-semibold">{bondText}</dd>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <dt className="text-neutral-500">Bills</dt>
+              <dd className="font-semibold">{listing.bills_included ? "Included" : "Not included"}</dd>
+            </div>
+          </dl>
 
           <section className="mt-8 border-t border-neutral-200 pt-8">
             <h2 className="text-xl font-semibold">About this room</h2>

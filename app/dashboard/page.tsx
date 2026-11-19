@@ -93,31 +93,36 @@ async function Hub() {
           {listings && listings.length > 0 ? (
             <ul className="mt-4 divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
               {listings.map((listing) => (
-                <li key={listing.id}>
+                <li key={listing.id} className="flex items-center gap-3 p-4">
                   <Link
                     href={`/listings/${listing.id}`}
-                    className="flex items-center gap-4 p-4 transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-neutral-900"
+                    className="flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
                   >
-                  {listing.image_urls?.[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={listing.image_urls[0]}
-                      alt=""
-                      className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 shrink-0 rounded-xl bg-neutral-100" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{listing.title}</p>
-                    <p className="text-sm text-neutral-500">{listing.suburb}</p>
-                  </div>
-                  <p className="shrink-0 text-sm">
-                    <span className="font-semibold">
-                      {formatPrice(listing.price_per_week)}
-                    </span>
-                    <span className="text-neutral-500"> / week</span>
-                  </p>
+                    {listing.image_urls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={listing.image_urls[0]}
+                        alt=""
+                        className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="h-16 w-16 shrink-0 rounded-xl bg-neutral-100" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{listing.title}</p>
+                      <p className="text-sm text-neutral-500">{listing.suburb}</p>
+                    </div>
+                    <p className="shrink-0 text-sm">
+                      <span className="font-semibold">{formatPrice(listing.price_per_week)}</span>
+                      <span className="text-neutral-500"> / week</span>
+                    </p>
+                  </Link>
+                  <Link
+                    href={`/listings/${listing.id}/edit`}
+                    aria-label={`Edit ${listing.title}`}
+                    className="shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                  >
+                    Edit
                   </Link>
                 </li>
               ))}

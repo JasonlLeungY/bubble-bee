@@ -2,29 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { UUID } from "@/utils/lifestyle";
+import { listingImagePath, readListingForm, type ListingFields } from "@/utils/listing-form";
 import { createClient } from "@/utils/supabase/server";
 
 export type ListingState = {
   error?: string;
   /** Echoed back so the form is not wiped when validation fails. */
-  fields?: {
-    title: string;
-    description: string;
-    price: string;
-    suburb: string;
-    isSmokerAllowed: boolean;
-    isShiftWorkerFriendly: boolean;
-    toleratesNoise: boolean;
-  };
+  fields?: ListingFields;
 };
 
-const MAX_IMAGES = 5;
-const MAX_PRICE = 100_000;
-
-function text(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
+const BUCKET = "listing-images";
 
 export async function createListing(
   _prevState: ListingState,
@@ -37,53 +25,14 @@ export async function createListing(
   const userId = data?.claims?.sub;
   if (!userId) redirect("/login");
 
-  const fields = {
-    title: text(formData, "title"),
-    description: text(formData, "description"),
-    price: text(formData, "price_per_week"),
-    suburb: text(formData, "suburb"),
-    isSmokerAllowed: formData.get("is_smoker_allowed") === "on",
-    isShiftWorkerFriendly: formData.get("is_shift_worker_friendly") === "on",
-    toleratesNoise: formData.get("tolerates_noise") === "on",
-  };
-  const imageUrls = formData
-    .getAll("image_urls")
-    .filter((value): value is string => typeof value === "string");
-
-  if (fields.title.length < 3 || fields.title.length > 120) {
-    return { error: "Give the listing a title of 3 to 120 characters.", fields };
-  }
-  if (fields.description.length > 5000) {
-    return { error: "Keep the description under 5,000 characters.", fields };
-  }
-  const price = Number(fields.price);
-  if (!fields.price || !Number.isFinite(price) || price <= 0 || price > MAX_PRICE) {
-    return { error: "Enter the weekly rent as a number above 0.", fields };
-  }
-  if (!fields.suburb || fields.suburb.length > 80) {
-    return { error: "Enter the suburb.", fields };
-  }
-  if (imageUrls.length > MAX_IMAGES) {
-    return { error: `A listing can have up to ${MAX_IMAGES} photos.`, fields };
-  }
-  // Only accept files this user uploaded to our own bucket, so a listing can
-  // never point at an arbitrary external URL.
-  const ownFolder = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listing-images/${userId}/`;
-  if (!imageUrls.every((url) => url.startsWith(ownFolder))) {
-    return { error: "One of the photos is not valid. Remove it and try again.", fields };
+  const parsed = readListingForm(formData, userId);
+  if (!parsed.values) {
+    return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
   }
 
-  const { error } = await supabase.from("listings").insert({
-    landlord_id: userId,
-    title: fields.title,
-    description: fields.description,
-    price_per_week: Math.round(price * 100) / 100,
-    suburb: fields.suburb,
-    image_urls: imageUrls,
-    is_smoker_allowed: fields.isSmokerAllowed,
-    is_shift_worker_friendly: fields.isShiftWorkerFriendly,
-    tolerates_noise: fields.toleratesNoise,
-  });
+  const { error } = await supabase
+    .from("listings")
+    .insert({ landlord_id: userId, ...parsed.values });
 
   if (error) {
     return {
@@ -92,13 +41,70 @@ export async function createListing(
         error.code === "42501"
           ? "Only landlord accounts can create listings."
           : "We could not save the listing. Try again.",
-      fields,
+      fields: parsed.fields,
     };
   }
 
   revalidatePath("/dashboard");
   revalidatePath("/");
   redirect("/dashboard");
+}
+
+export async function updateListing(
+  listingId: string,
+  _prevState: ListingState,
+  formData: FormData,
+): Promise<ListingState> {
+  if (!UUID.test(listingId)) return { error: "We could not find that listing." };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
+  if (!userId) redirect(`/login?next=${encodeURIComponent(`/listings/${listingId}/edit`)}`);
+
+  const parsed = readListingForm(formData, userId);
+  if (!parsed.values) {
+    return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
+  }
+  const values = parsed.values;
+
+  // Check ownership here as well. The update below is also limited by the
+  // "owners can update their own listings" policy and the column grants.
+  const { data: current } = await supabase
+    .from("listings")
+    .select("image_urls")
+    .eq("id", listingId)
+    .eq("landlord_id", userId)
+    .maybeSingle();
+  if (!current) {
+    return { error: "You can only edit your own listings.", fields: parsed.fields };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("listings")
+    .update(values)
+    .eq("id", listingId)
+    .eq("landlord_id", userId)
+    .select("id");
+  if (error || !updated || updated.length === 0) {
+    return { error: "We could not save your changes. Try again.", fields: parsed.fields };
+  }
+
+  // Delete photos the owner removed. Only files in this user's folder are removed.
+  const kept = new Set(values.image_urls);
+  const removed = (current.image_urls ?? [])
+    .filter((url: string) => !kept.has(url))
+    .map((url: string) => listingImagePath(url, userId))
+    .filter((path: string | null): path is string => path !== null);
+  if (removed.length > 0) {
+    const { error: removeError } = await supabase.storage.from(BUCKET).remove(removed);
+    if (removeError) console.error("Could not delete removed listing photos", removeError);
+  }
+
+  revalidatePath(`/listings/${listingId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  redirect(`/listings/${listingId}?saved=1`);
 }
 
 export type LifestyleState = {

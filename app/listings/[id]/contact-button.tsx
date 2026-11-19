@@ -10,7 +10,7 @@ export type ContactStatus =
   | { kind: "can-contact"; listingId: string }
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
-  | { kind: "own-listing" }
+  | { kind: "owner"; listingId: string }
   | { kind: "landlord" };
 
 const baseClass =
@@ -20,7 +20,6 @@ const disabledClass = `${baseClass} cursor-not-allowed bg-neutral-200 text-neutr
 
 const DISABLED_LABELS = {
   mismatch: "Not a Lifestyle Match",
-  "own-listing": "This is your listing",
   landlord: "Tenant accounts only",
 } as const;
 
@@ -37,6 +36,14 @@ export default function ContactButton({
     return (
       <Link href={status.loginHref} className={`${primaryClass} ${width}`}>
         Log in to Contact
+      </Link>
+    );
+  }
+  // Only ever sent to the listing's own landlord (see the listing page).
+  if (status.kind === "owner") {
+    return (
+      <Link href={`/listings/${status.listingId}/edit`} className={`${primaryClass} ${width}`}>
+        Edit listing
       </Link>
     );
   }

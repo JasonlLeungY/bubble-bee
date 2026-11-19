@@ -21,6 +21,7 @@ create policy "Published listings are public; owners see their own" on public.li
 revoke update on public.listings from authenticated;
 grant update (
   title, description, price_per_week, suburb, image_urls,
+  available_from, bond_amount, bills_included,
   is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, status
 ) on public.listings to authenticated;
 
