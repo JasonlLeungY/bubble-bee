@@ -102,7 +102,8 @@ body {
 
 .hive[class~="border"] {
   border: 0;
-  background-color: var(--color-neutral-100);
+  /* Fixed light fill, so the black text stays readable in dark mode too. */
+  background-color: #f5f5f5;
 }
 
 .hive:focus-visible {
@@ -131,4 +132,24 @@ body,
 .text-neutral-800,
 .text-neutral-900 {
   color: var(--text-brand);
+}
+
+/* Button text is black. */
+.hive {
+  color: #000000;
+}
+
+/*
+ * Listing cards: black text on a white card, so the text reads in dark mode
+ * as well.
+ */
+.listing-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  color: #000000;
+}
+
+.listing-card * {
+  color: #000000;
 }

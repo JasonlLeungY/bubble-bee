@@ -79,7 +79,7 @@ async function ListingGrid() {
           <li key={listing.id}>
             <Link
               href={`/listings/${listing.id}`}
-              className="group block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
+              className="listing-card group block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
             >
               <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
                 {cover ? (
