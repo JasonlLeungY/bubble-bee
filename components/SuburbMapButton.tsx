@@ -3,11 +3,14 @@
 import dynamic from "next/dynamic";
 import { useId, useRef, useState } from "react";
 
-// Loaded only in the browser, and only once the map is opened.
+// Loaded only in the browser, and only once the map is open.
 const SuburbMap = dynamic(() => import("./SuburbMap"), {
   ssr: false,
   loading: () => <div className="h-full w-full animate-pulse bg-neutral-100" />,
 });
+
+type Point = { latitude: number; longitude: number };
+type Status = "idle" | "loading" | "ready" | "missing" | "error";
 
 type Props = {
   suburb: string;
@@ -17,27 +20,40 @@ type Props = {
 };
 
 /**
- * "Room in <suburb>" that opens an approximate map of the suburb. Uses the
- * native <dialog>, so Esc, focus handling and the backdrop come from the browser.
+ * "Room in <suburb>". Opens an approximate map of the suburb. If the suburb
+ * has no stored centre yet, the map fetches it on open. The native <dialog>
+ * provides Esc, focus handling and the backdrop.
  */
-export default function SuburbMapButton({
-  suburb,
-  latitude,
-  longitude,
-  className = "",
-}: Props) {
+export default function SuburbMapButton({ suburb, latitude, longitude, className = "" }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const [showMap, setShowMap] = useState(false);
+  const [point, setPoint] = useState<Point | null>(
+    latitude !== null && longitude !== null ? { latitude, longitude } : null,
+  );
+  const [status, setStatus] = useState<Status>(point ? "ready" : "idle");
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Not mapped yet: plain text, no button.
-  if (latitude === null || longitude === null) {
-    return <span className={className}>Room in {suburb}</span>;
-  }
-
-  function open() {
-    setShowMap(true);
+  async function open() {
+    setIsOpen(true);
     dialogRef.current?.showModal();
+    if (point) {
+      setStatus("ready");
+      return;
+    }
+
+    setStatus("loading");
+    try {
+      const response = await fetch(`/api/suburb-location?suburb=${encodeURIComponent(suburb)}`);
+      if (response.ok) {
+        const data = (await response.json()) as Point;
+        setPoint({ latitude: data.latitude, longitude: data.longitude });
+        setStatus("ready");
+      } else {
+        setStatus(response.status === 404 ? "missing" : "error");
+      }
+    } catch {
+      setStatus("error");
+    }
   }
 
   function close() {
@@ -52,18 +68,14 @@ export default function SuburbMapButton({
         aria-haspopup="dialog"
         className={`group cursor-pointer rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${className}`}
       >
-        <span className="underline-offset-4 group-hover:underline">
-          Room in {suburb}
-        </span>
-        <span className="ml-1.5 text-xs text-neutral-400 group-hover:text-neutral-900">
-          View on map
-        </span>
+        <span className="underline-offset-4 group-hover:underline">Room in {suburb}</span>
+        <span className="ml-1.5 text-xs text-neutral-400 group-hover:text-neutral-900">View on map</span>
       </button>
 
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
-        onClose={() => setShowMap(false)}
+        onClose={() => setIsOpen(false)}
         onClick={(event) => {
           // A click on the dimmed backdrop lands on the dialog itself.
           if (event.target === event.currentTarget) close();
@@ -94,16 +106,28 @@ export default function SuburbMapButton({
           </button>
         </div>
 
-        <div className="relative h-[360px] bg-neutral-100 sm:h-[440px]">
-          {showMap && (
-            <SuburbMap latitude={latitude} longitude={longitude} />
+        <div className="relative flex h-[360px] items-center justify-center bg-neutral-100 sm:h-[440px]">
+          {isOpen && status === "ready" && point && (
+            <SuburbMap suburb={suburb} latitude={point.latitude} longitude={point.longitude} />
+          )}
+          {(status === "idle" || status === "loading") && (
+            <p className="text-sm text-neutral-500">Finding {suburb} on the map…</p>
+          )}
+          {status === "missing" && (
+            <p className="px-6 text-center text-sm text-neutral-600">
+              We could not find {suburb} on the map yet.
+            </p>
+          )}
+          {status === "error" && (
+            <p className="px-6 text-center text-sm text-neutral-600">
+              The map could not load. Close this and try again.
+            </p>
           )}
         </div>
 
         <p className="px-5 py-3 text-sm text-neutral-600">
-          Approximate location: the shaded circle covers the general area of
-          the suburb. The exact address is shared once you message the
-          landlord.
+          Approximate location: the shaded circle covers the general area of the suburb. The exact
+          address is shared once you message the landlord.
         </p>
       </dialog>
     </div>
