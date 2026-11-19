@@ -16,7 +16,9 @@ export type SuburbPoint = {
   longitude: number;
 };
 
-export const SUBURB_PATTERN = /^[A-Za-z][A-Za-z' -]{0,79}$/;
+// Letters, spaces, apostrophes, hyphens and full stops (listings contain
+// names such as "Wynn Vale.").
+export const SUBURB_PATTERN = /^[A-Za-z][A-Za-z.' -]{0,79}$/;
 
 const SEARCH_URL = process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org/search";
 const USER_AGENT = "sharehouse-marketplace/1.0 (suburb map lookup)";
@@ -56,9 +58,11 @@ function geocode(name: string): Promise<SuburbPoint | null> {
 }
 
 async function search(name: string): Promise<SuburbPoint | null> {
+  // Drop a trailing full stop before searching; keep the name as the listing has it.
+  const query = name.replace(/\.$/, "").trim();
   const url = new URL(SEARCH_URL);
   url.search = new URLSearchParams({
-    q: `${name}, Australia`,
+    q: `${query}, Australia`,
     format: "jsonv2",
     countrycodes: "au",
     addressdetails: "1",
