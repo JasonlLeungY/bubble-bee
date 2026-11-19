@@ -113,3 +113,18 @@ body {
     color: var(--color-yellow-600);
   }
 }
+
+/*
+ * All text is the Bubble Bee yellow. Coloured buttons keep their white text,
+ * and red or green messages keep their colour, so they still read as errors
+ * or confirmations.
+ */
+body,
+.text-neutral-400,
+.text-neutral-500,
+.text-neutral-600,
+.text-neutral-700,
+.text-neutral-800,
+.text-neutral-900 {
+  color: var(--color-yellow-600);
+}
