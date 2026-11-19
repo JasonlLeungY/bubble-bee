@@ -13,7 +13,7 @@ export default function SiteHeader() {
           className="flex items-center gap-2 rounded-lg text-lg font-semibold tracking-tight text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
         >
           <BeeLogo className="h-9 w-9" />
-          sharehouse
+          Bubble Bee
         </Link>
 
         <nav className="flex items-center gap-2 text-sm font-semibold">
