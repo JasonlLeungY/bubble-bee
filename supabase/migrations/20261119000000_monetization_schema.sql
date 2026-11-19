@@ -40,7 +40,11 @@ create table public.products (
     check (duration_days is not null or kind = 'highlight')
 );
 
--- Highlight options. Boost options are not priced yet and are added later.
+-- Boost option: AUD 0.70 per boost, active for 1 day.
+insert into public.products (code, kind, name, price_cents, duration_days) values
+  ('boost_1d', 'boost', 'Boost, 1 day', 70, 1);
+
+-- Highlight options.
 insert into public.products (code, kind, name, price_cents, duration_days) values
   ('highlight_7d',  'highlight', 'Highlight, 7 days',   499,  7),
   ('highlight_14d', 'highlight', 'Highlight, 14 days',  999,  14),
@@ -59,6 +63,12 @@ create table public.plans (
   primary key (code, billing_interval)
 );
 
+-- Subscription plans, monthly, AUD. Yearly prices are not set yet.
+-- boosts_per_period is the free boosts included each billing period.
+insert into public.plans (code, billing_interval, name, price_cents, max_active_listings, boosts_per_period) values
+  ('basic', 'month', 'Basic', 799,  3,  3),
+  ('pro',   'month', 'Pro',   2499, 10, 10);
+
 -- 2. Billing identity: one payment-provider customer per user.
 create table public.billing_customers (
   user_id              uuid primary key references public.profiles (id) on delete cascade,
@@ -67,6 +77,7 @@ create table public.billing_customers (
 );
 
 -- 3. One-off purchases. Kept after an account is deleted, for records.
+--    No refunds are offered. 'refunded' is only for chargebacks and corrections.
 create table public.orders (
   id                  uuid primary key default gen_random_uuid(),
   user_id             uuid references public.profiles (id) on delete set null,
