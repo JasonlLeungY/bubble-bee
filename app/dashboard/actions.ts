@@ -150,3 +150,48 @@ export async function updateLifestyle(
   revalidatePath("/dashboard");
   return { saved: true, values };
 }
+
+/**
+ * Deletes one of the signed-in landlord's listings, with its photos. Enquiries
+ * and messages about it are deleted too (their foreign keys cascade).
+ */
+export async function deleteListing(listingId: string): Promise<ListingState> {
+  if (!UUID.test(listingId)) return { error: "We could not find that listing." };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
+  if (!userId) redirect(`/login?next=${encodeURIComponent(`/listings/${listingId}`)}`);
+
+  const { data: current } = await supabase
+    .from("listings")
+    .select("image_urls")
+    .eq("id", listingId)
+    .eq("landlord_id", userId)
+    .maybeSingle();
+  if (!current) return { error: "You can only delete your own listings." };
+
+  // Delete the row first: if this fails, nothing else has been removed.
+  const { data: deleted, error } = await supabase
+    .from("listings")
+    .delete()
+    .eq("id", listingId)
+    .eq("landlord_id", userId)
+    .select("id");
+  if (error || !deleted || deleted.length === 0) {
+    return { error: "We could not delete the listing. Try again." };
+  }
+
+  const paths = (current.image_urls ?? [])
+    .map((url: string) => listingImagePath(url, userId))
+    .filter((path: string | null): path is string => path !== null);
+  if (paths.length > 0) {
+    const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths);
+    if (removeError) console.error("Could not delete listing photos", removeError);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  revalidatePath(`/listings/${listingId}`);
+  redirect("/dashboard");
+}

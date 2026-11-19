@@ -78,7 +78,7 @@ async function Listing({
       loginHref: `/login?next=${encodeURIComponent(`/listings/${listing.id}`)}`,
     };
   } else if (viewerId === listing.landlord_id) {
-    status = { kind: "owner", listingId: listing.id };
+    status = { kind: "owner", listingId: listing.id, title: listing.title };
   } else {
     const [{ data: viewer }, { data: existing }] = await Promise.all([
       supabase

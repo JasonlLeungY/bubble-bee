@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import DeleteListingButton from "@/components/DeleteListingButton";
 import { signOut } from "@/app/login/actions";
 import { formatPrice } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
@@ -124,6 +125,7 @@ async function Hub() {
                   >
                     Edit
                   </Link>
+                  <DeleteListingButton listingId={listing.id} title={listing.title} className="shrink-0" />
                 </li>
               ))}
             </ul>

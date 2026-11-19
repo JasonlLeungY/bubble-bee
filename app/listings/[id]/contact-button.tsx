@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import DeleteListingButton from "@/components/DeleteListingButton";
 import { initiateContact, type ContactState } from "./actions";
 
 /** Worked out on the server for whoever is viewing the listing. */
@@ -10,7 +11,7 @@ export type ContactStatus =
   | { kind: "can-contact"; listingId: string }
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
-  | { kind: "owner"; listingId: string }
+  | { kind: "owner"; listingId: string; title: string }
   | { kind: "landlord" };
 
 const baseClass =
@@ -42,9 +43,12 @@ export default function ContactButton({
   // Only ever sent to the listing's own landlord (see the listing page).
   if (status.kind === "owner") {
     return (
-      <Link href={`/listings/${status.listingId}/edit`} className={`${primaryClass} ${width}`}>
-        Edit listing
-      </Link>
+      <div className={`flex gap-2 ${width}`}>
+        <Link href={`/listings/${status.listingId}/edit`} className={`${primaryClass} flex-1`}>
+          Edit listing
+        </Link>
+        <DeleteListingButton listingId={status.listingId} title={status.title} className="px-5 py-3.5 text-base" />
+      </div>
     );
   }
   if (status.kind === "existing") {
