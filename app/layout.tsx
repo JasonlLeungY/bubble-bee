@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Sharehouse", template: "%s | Sharehouse" },
+  title: { default: "Bubble Bee", template: "%s | Bubble Bee" },
   description: "Find a room in a share house, or fill a room in yours.",
 };
 
