@@ -3,30 +3,48 @@
 -- until the open decisions are confirmed. Runs after the three existing migrations.
 -- =============================================================================
 
--- 0. Close a gap in the listings table. Owners may edit their listing's
---    content. They must not be able to edit promotion columns, which are added
---    below and written only by the server.
+-- 0. Listing status and permissions.
+--    New listings start as drafts; only published listings are public.
+--    Owners can edit content and publish or unpublish, but cannot touch the
+--    promotion columns added below. Publishing is limited by the plan's
+--    listing cap, which is checked in the server code (Step 2).
+alter table public.listings add column status text not null default 'published'
+  check (status in ('draft', 'published'));
+-- Listings created before this migration were already public, so they stay published.
+alter table public.listings alter column status set default 'draft';
+
+drop policy "Listings are publicly readable" on public.listings;
+create policy "Published listings are public; owners see their own" on public.listings
+  for select to anon, authenticated
+  using (status = 'published' or (select auth.uid()) = landlord_id);
+
 revoke update on public.listings from authenticated;
 grant update (
   title, description, price_per_week, suburb, image_urls,
-  is_smoker_allowed, is_shift_worker_friendly, tolerates_noise
+  is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, status
 ) on public.listings to authenticated;
 
 -- 1. Catalogue: what can be bought, and at what price. Prices live here, not
 --    in code, so they can change without a deployment.
 create table public.products (
-  code              text primary key,        -- 'boost_7d', 'highlight_30d', 'highlight_forever'
+  code              text primary key,        -- 'highlight_7d', 'highlight_14d', 'highlight_28d'
   kind              text not null check (kind in ('boost', 'highlight')),
   name              text not null,
   price_cents       integer not null check (price_cents > 0),
   currency          char(3) not null default 'AUD',
   duration_days     integer check (duration_days > 0),   -- null = permanent
-  provider_price_id text unique,
+  provider_price_id text unique,                          -- Stripe price id, added when created in Stripe
   is_active         boolean not null default true,
   created_at        timestamptz not null default now(),
   constraint products_only_highlight_is_permanent
     check (duration_days is not null or kind = 'highlight')
 );
+
+-- Highlight options. Boost options are not priced yet and are added later.
+insert into public.products (code, kind, name, price_cents, duration_days) values
+  ('highlight_7d',  'highlight', 'Highlight, 7 days',   499,  7),
+  ('highlight_14d', 'highlight', 'Highlight, 14 days',  999,  14),
+  ('highlight_28d', 'highlight', 'Highlight, 4 weeks', 1599, 28);
 
 create table public.plans (
   code                text not null,                       -- 'basic', 'pro'
@@ -58,14 +76,14 @@ create table public.orders (
   currency            char(3) not null,
   status              text not null default 'pending'
                         check (status in ('pending', 'paid', 'failed', 'canceled', 'refunded')),
-  provider_session_id text unique,      -- checkout session id: the webhook's idempotency key
+  provider_session_id text unique,      -- Stripe checkout session id: the webhook's idempotency key
   provider_payment_id text unique,
   created_at          timestamptz not null default now(),
   paid_at             timestamptz,
   refunded_at         timestamptz
 );
 
--- 4. Recurring subscriptions. Status values mirror the payment provider's.
+-- 4. Recurring subscriptions. Status values mirror Stripe's.
 create table public.subscriptions (
   id                       uuid primary key default gen_random_uuid(),
   user_id                  uuid not null references public.profiles (id) on delete cascade,
@@ -89,8 +107,11 @@ create unique index subscriptions_one_live_per_user
   on public.subscriptions (user_id)
   where status in ('trialing', 'active', 'past_due');
 
--- 5. Promotion ledger: every boost or highlight ever granted. This is the
---    record of what was granted and why. Expiry is decided by ends_at.
+-- 5. Promotion ledger: every boost or highlight ever granted.
+--    Stacking: a new boost starts at the later of now() and the end of the
+--    listing's current boost, so purchases add up.
+--    Removal: an owner can end a promotion early. That sets canceled_at and
+--    ends it now. Whether a removal is refunded is not decided yet.
 create table public.listing_promotions (
   id              uuid primary key default gen_random_uuid(),
   listing_id      uuid not null references public.listings (id) on delete cascade,
@@ -101,8 +122,10 @@ create table public.listing_promotions (
   subscription_id uuid references public.subscriptions (id) on delete set null,
   starts_at       timestamptz not null,
   ends_at         timestamptz not null,                 -- 'infinity' = permanent highlight
+  canceled_at     timestamptz,
   created_at      timestamptz not null default now(),
   check (ends_at > starts_at),
+  check (canceled_at is null or canceled_at >= starts_at),
   check (source <> 'purchase' or order_id is not null),
   check (source <> 'subscription_allowance' or subscription_id is not null)
 );
