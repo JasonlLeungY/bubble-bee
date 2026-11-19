@@ -30,7 +30,7 @@ export default function ImageUploader({
   onChange,
   onUploadingChange,
   name,
-  maxImages = 5,
+  maxImages = 9,
   savedUrls = [],
 }: ImageUploaderProps) {
   const [pending, setPending] = useState(0);

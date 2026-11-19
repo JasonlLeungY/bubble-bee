@@ -2,7 +2,7 @@
 // this and trust nothing from the form: every value is checked here, and
 // Row Level Security and column grants check again in the database.
 
-export const MAX_IMAGES = 5;
+export const MAX_IMAGES = 9;
 const MAX_PRICE = 100_000;
 const MAX_BOND = 100_000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

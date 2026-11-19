@@ -292,7 +292,9 @@ async function Listing({
   );
 }
 
-// Where each photo sits in the 4 x 2 desktop grid, by number of photos.
+// Desktop: a large photo with up to four beside it, and "+N more" over the
+// last of those. Phones swipe through every photo, and a grid of all photos
+// is shown below on desktop when there are more than five.
 const LEAD = "md:col-span-2 md:row-span-2";
 const GALLERY_SPANS: Record<number, string[]> = {
   1: ["md:col-span-4 md:row-span-2"],
@@ -320,38 +322,78 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
     );
   }
 
-  const shown = images.slice(0, 5);
-  const spans = GALLERY_SPANS[shown.length];
-  const single = shown.length === 1;
+  const hero = images.slice(0, 5);
+  const more = images.length - hero.length;
+  const spans = GALLERY_SPANS[hero.length];
+  const single = images.length === 1;
 
   return (
-    // Small screens: a swipeable row. Medium and up: one large photo with the
-    // rest tiled beside it.
-    <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl [scrollbar-width:none] md:grid md:h-[440px] md:grid-cols-4 md:grid-rows-2 md:overflow-hidden">
-      {shown.map((url, index) => (
-        <li
-          key={url}
-          className={`relative aspect-[4/3] shrink-0 snap-center overflow-hidden bg-neutral-100 md:aspect-auto md:w-auto ${
-            single ? "w-full" : "w-[88%]"
-          } ${spans[index]}`}
-        >
-          <Image
-            src={url}
-            alt={`${title}, photo ${index + 1} of ${shown.length}`}
-            fill
-            sizes={
-              single
-                ? "(min-width: 1152px) 1088px, 100vw"
-                : index === 0 || shown.length === 2
-                  ? "(min-width: 1152px) 544px, (min-width: 768px) 50vw, 88vw"
-                  : "(min-width: 1152px) 272px, (min-width: 768px) 25vw, 88vw"
-            }
-            loading={index === 0 ? "eager" : "lazy"}
-            className="object-cover"
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      {/* Phones: swipe through every photo. */}
+      <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl [scrollbar-width:none] md:hidden">
+        {images.map((url, index) => (
+          <li
+            key={url}
+            className={`relative aspect-[4/3] shrink-0 snap-center overflow-hidden bg-neutral-100 ${
+              single ? "w-full" : "w-[88%]"
+            }`}
+          >
+            <Image
+              src={url}
+              alt={`${title}, photo ${index + 1} of ${images.length}`}
+              fill
+              sizes="88vw"
+              loading={index === 0 ? "eager" : "lazy"}
+              className="object-cover"
+            />
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: the first five photos. */}
+      <ul className="hidden h-[440px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl md:grid">
+        {hero.map((url, index) => (
+          <li key={url} className={`relative overflow-hidden bg-neutral-100 ${spans[index]}`}>
+            <Image
+              src={url}
+              alt={`${title}, photo ${index + 1} of ${images.length}`}
+              fill
+              sizes={index === 0 ? "(min-width: 1152px) 544px, 50vw" : "(min-width: 1152px) 272px, 25vw"}
+              loading={index === 0 ? "eager" : "lazy"}
+              className="object-cover"
+            />
+            {index === hero.length - 1 && more > 0 && (
+              <a
+                href="#all-photos"
+                className="absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-semibold text-white transition hover:bg-black/65 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
+              >
+                +{more} more
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {images.length > hero.length && (
+        <section id="all-photos" className="mt-8 hidden scroll-mt-24 md:block">
+          <h2 className="text-lg font-semibold">All {images.length} photos</h2>
+          <ul className="mt-3 grid grid-cols-3 gap-3">
+            {images.map((url, index) => (
+              <li key={url} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
+                <Image
+                  src={url}
+                  alt={`${title}, photo ${index + 1} of ${images.length}`}
+                  fill
+                  sizes="(min-width: 1152px) 360px, 33vw"
+                  loading="lazy"
+                  className="object-cover"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
   );
 }
 
