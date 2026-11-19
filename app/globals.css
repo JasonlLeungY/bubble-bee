@@ -4,6 +4,8 @@
   color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
+  /* Body text: a darker Bubble Bee yellow, readable on white (about 5:1). */
+  --text-brand: #a16207;
 }
 
 @theme inline {
@@ -48,6 +50,7 @@
     --color-emerald-950: #ecfdf5;
     --background: #0a0a0a;
     --foreground: #fafafa;
+    --text-brand: #eab308;
   }
 }
 
@@ -79,6 +82,7 @@
   --color-emerald-950: #ecfdf5;
   --background: #0a0a0a;
   --foreground: #fafafa;
+  --text-brand: #eab308;
 }
 
 body {
@@ -126,5 +130,5 @@ body,
 .text-neutral-700,
 .text-neutral-800,
 .text-neutral-900 {
-  color: var(--color-yellow-600);
+  color: var(--text-brand);
 }
