@@ -64,14 +64,14 @@ async function Hub() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/messages"
-            className="rounded-lg border border-neutral-300 px-3.5 py-2 text-sm font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+            className="hive rounded-lg border border-neutral-300 px-3.5 py-2 text-sm font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
           >
             Messages
           </Link>
           <form action={signOut}>
             <button
               type="submit"
-              className="cursor-pointer rounded-lg border border-neutral-300 px-3.5 py-2 text-sm font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              className="hive cursor-pointer rounded-lg border border-neutral-300 px-3.5 py-2 text-sm font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
               Log out
             </button>
@@ -85,7 +85,7 @@ async function Hub() {
             <h2 className="text-lg font-semibold">Your listings</h2>
             <Link
               href="/dashboard/new"
-              className="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              className="hive rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
               Create New Listing
             </Link>
@@ -121,7 +121,7 @@ async function Hub() {
                   <Link
                     href={`/listings/${listing.id}/edit`}
                     aria-label={`Edit ${listing.title}`}
-                    className="shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                    className="hive shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
                   >
                     Edit
                   </Link>
@@ -142,7 +142,7 @@ async function Hub() {
             <h2 className="text-lg font-semibold">Your lifestyle</h2>
             <Link
               href="/"
-              className="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              className="hive rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
               Browse rooms
             </Link>

@@ -275,14 +275,14 @@ export default function ListingForm({
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
         <Link
           href={isEdit ? `/listings/${listingId}` : "/dashboard"}
-          className="rounded-lg border border-neutral-300 px-4 py-3.5 text-center text-base font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:flex-1"
+          className="hive rounded-lg border border-neutral-300 px-4 py-3.5 text-center text-base font-semibold transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:flex-1"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={saving || uploading}
-          className="w-full cursor-pointer rounded-lg bg-rose-600 px-4 py-3.5 text-base font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-1"
+          className="hive w-full cursor-pointer rounded-lg bg-rose-600 px-4 py-3.5 text-base font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-1"
         >
           {isEdit
             ? saving

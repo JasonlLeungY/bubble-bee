@@ -63,7 +63,7 @@ export default function LifestyleForm({ initial }: { initial: Values }) {
         <button
           type="submit"
           disabled={saving}
-          className="cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="hive cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save lifestyle"}
         </button>

@@ -30,7 +30,7 @@ export default function SiteHeader() {
 const textLinkClass =
   "rounded-full px-3 py-2 transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 const pillClass =
-  "rounded-full border border-neutral-300 px-4 py-2 transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
+  "hive rounded-full border border-neutral-300 px-4 py-2 transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 
 async function AccountLinks() {
   await connection();

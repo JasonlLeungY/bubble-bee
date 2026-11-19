@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const buttonClass =
-  "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-neutral-300 px-3.5 py-2 text-sm font-semibold text-neutral-900 transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
+  "hive inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-neutral-300 px-3.5 py-2 text-sm font-semibold text-neutral-900 transition hover:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 
 // The app pages visited in this tab, most recent last. Kept in sessionStorage
 // so it survives reloads but not a new tab. The browser's own history cannot

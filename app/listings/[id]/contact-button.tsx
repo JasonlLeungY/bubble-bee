@@ -16,7 +16,7 @@ export type ContactStatus =
   | { kind: "landlord" };
 
 const baseClass =
-  "block rounded-lg px-6 py-3.5 text-center text-base font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
+  "hive block rounded-lg px-6 py-3.5 text-center text-base font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 const primaryClass = `${baseClass} cursor-pointer bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60`;
 const disabledClass = `${baseClass} cursor-not-allowed bg-neutral-200 text-neutral-500`;
 

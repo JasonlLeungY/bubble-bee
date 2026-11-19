@@ -37,7 +37,7 @@ export default function MessageForm({
         <button
           type="submit"
           disabled={sending}
-          className="shrink-0 cursor-pointer rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="hive shrink-0 cursor-pointer rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {sending ? "Sending…" : "Send"}
         </button>
