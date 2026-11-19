@@ -110,6 +110,12 @@ export default function ImageUploader({
     onUploadingChange?.(false);
   }
 
+  // The first photo is the cover. Moving a photo to the front keeps the
+  // order of the others.
+  function makeCover(url: string) {
+    onChange([url, ...value.filter((item) => item !== url)]);
+  }
+
   async function removeImage(url: string) {
     onChange(value.filter((item) => item !== url));
     setErrors([]);
@@ -202,6 +208,16 @@ export default function ImageUploader({
                 <span className="absolute bottom-1.5 left-1.5 rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-neutral-900 shadow">
                   Cover
                 </span>
+              )}
+              {index > 0 && (
+                <button
+                  type="button"
+                  onClick={() => makeCover(url)}
+                  disabled={uploading}
+                  className="absolute bottom-1.5 left-1.5 cursor-pointer rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-neutral-900 shadow transition hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Set cover
+                </button>
               )}
               <button
                 type="button"
