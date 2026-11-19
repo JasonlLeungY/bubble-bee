@@ -80,7 +80,7 @@ export default function SuburbMapButton({ suburb, latitude, longitude, className
           // A click on the dimmed backdrop lands on the dialog itself.
           if (event.target === event.currentTarget) close();
         }}
-        className="m-auto w-[min(92vw,40rem)] overflow-hidden rounded-2xl bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-neutral-900/50 open:flex open:flex-col"
+        className="m-auto w-[min(92vw,40rem)] overflow-hidden rounded-2xl bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 open:flex open:flex-col"
       >
         <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-5 py-4">
           <div>

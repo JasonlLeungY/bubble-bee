@@ -26,6 +26,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Applies the saved theme before the page paints, so there is no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var t=localStorage.getItem('bubble-bee-theme');if(t=='dark'||t=='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+          }}
+        />
         {/* Reads the current URL, so it sits behind Suspense (Cache Components). */}
         <Suspense fallback={<div aria-hidden="true" className="h-14" />}>
           <PageNav />

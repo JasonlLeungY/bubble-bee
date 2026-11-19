@@ -41,7 +41,7 @@ export default function DeleteListingButton({
           // A click on the dimmed backdrop lands on the dialog itself.
           if (event.target === event.currentTarget) dialogRef.current?.close();
         }}
-        className="m-auto w-[min(92vw,28rem)] overflow-hidden rounded-2xl bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-neutral-900/50 open:flex open:flex-col"
+        className="m-auto w-[min(92vw,28rem)] overflow-hidden rounded-2xl bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 open:flex open:flex-col"
       >
         <div className="p-6">
           <h2 id={headingId} className="text-lg font-semibold">
