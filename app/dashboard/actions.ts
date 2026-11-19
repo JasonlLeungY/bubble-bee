@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isAdminUser } from "@/utils/access";
 import { UUID } from "@/utils/lifestyle";
 import { listingImagePath, readListingForm, type ListingFields } from "@/utils/listing-form";
 import { createClient } from "@/utils/supabase/server";
@@ -25,7 +26,7 @@ export async function createListing(
   const userId = data?.claims?.sub;
   if (!userId) redirect("/login");
 
-  const parsed = readListingForm(formData, userId);
+  const parsed = readListingForm(formData, [userId]);
   if (!parsed.values) {
     return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
   }
@@ -62,39 +63,42 @@ export async function updateListing(
   const userId = data?.claims?.sub;
   if (!userId) redirect(`/login?next=${encodeURIComponent(`/listings/${listingId}/edit`)}`);
 
-  const parsed = readListingForm(formData, userId);
+  // Only the owner or an administrator may edit. The database enforces the
+  // same rule through the update policy and the column grants.
+  const { data: current } = await supabase
+    .from("listings")
+    .select("image_urls, landlord_id")
+    .eq("id", listingId)
+    .maybeSingle();
+  if (!current) return { error: "We could not find that listing." };
+
+  const isOwner = current.landlord_id === userId;
+  if (!isOwner && !(await isAdminUser(supabase, userId))) {
+    return { error: "Only the listing owner or an administrator can edit this listing." };
+  }
+  // Photos may sit in the owner's folder; an administrator may also use their own.
+  const folders = isOwner ? [userId] : [current.landlord_id, userId];
+
+  const parsed = readListingForm(formData, folders);
   if (!parsed.values) {
     return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
   }
   const values = parsed.values;
 
-  // Check ownership here as well. The update below is also limited by the
-  // "owners can update their own listings" policy and the column grants.
-  const { data: current } = await supabase
-    .from("listings")
-    .select("image_urls")
-    .eq("id", listingId)
-    .eq("landlord_id", userId)
-    .maybeSingle();
-  if (!current) {
-    return { error: "You can only edit your own listings.", fields: parsed.fields };
-  }
-
   const { data: updated, error } = await supabase
     .from("listings")
     .update(values)
     .eq("id", listingId)
-    .eq("landlord_id", userId)
     .select("id");
   if (error || !updated || updated.length === 0) {
     return { error: "We could not save your changes. Try again.", fields: parsed.fields };
   }
 
-  // Delete photos the owner removed. Only files in this user's folder are removed.
+  // Delete photos the editor removed.
   const kept = new Set(values.image_urls);
   const removed = (current.image_urls ?? [])
     .filter((url: string) => !kept.has(url))
-    .map((url: string) => listingImagePath(url, userId))
+    .map((url: string) => listingImagePath(url, folders))
     .filter((path: string | null): path is string => path !== null);
   if (removed.length > 0) {
     const { error: removeError } = await supabase.storage.from(BUCKET).remove(removed);
@@ -183,7 +187,7 @@ export async function deleteListing(listingId: string): Promise<ListingState> {
   }
 
   const paths = (current.image_urls ?? [])
-    .map((url: string) => listingImagePath(url, userId))
+    .map((url: string) => listingImagePath(url, [userId]))
     .filter((path: string | null): path is string => path !== null);
   if (paths.length > 0) {
     const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths);

@@ -38,7 +38,7 @@ export type ListingValues = {
 
 export function readListingForm(
   formData: FormData,
-  userId: string,
+  folderIds: string[],
 ): { fields: ListingFields; values: ListingValues | null; error: string | null } {
   const text = (key: string) => {
     const value = formData.get(key);
@@ -102,7 +102,7 @@ export function readListingForm(
   }
   // Only photos this user uploaded to our own bucket, so a listing can never
   // point at an arbitrary external URL.
-  if (!imageUrls.every((url) => listingImagePath(url, userId) !== null)) {
+  if (!imageUrls.every((url) => listingImagePath(url, folderIds) !== null)) {
     return fail("One of the photos is not valid. Remove it and try again.");
   }
 
@@ -125,10 +125,11 @@ export function readListingForm(
   };
 }
 
-/** The storage path for a photo URL, only if the photo is in this user's folder. */
-export function listingImagePath(url: string, userId: string): string | null {
+/** The storage path for a photo URL, if it is in one of the given user folders. */
+export function listingImagePath(url: string, folderIds: string[]): string | null {
   const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listing-images/`;
   if (!url.startsWith(prefix)) return null;
   const path = decodeURIComponent(url.slice(prefix.length));
-  return path.startsWith(`${userId}/`) && !path.includes("..") ? path : null;
+  if (path.includes("..")) return null;
+  return folderIds.some((id) => path.startsWith(`${id}/`)) ? path : null;
 }

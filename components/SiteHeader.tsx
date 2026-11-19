@@ -10,7 +10,7 @@ export default function SiteHeader() {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-lg text-lg font-semibold tracking-tight text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
+          className="flex items-center gap-2 rounded-lg text-lg font-bold tracking-tight text-yellow-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-600"
         >
           <BeeLogo className="h-9 w-9" />
           Bubble Bee

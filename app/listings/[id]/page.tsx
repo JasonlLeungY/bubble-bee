@@ -83,7 +83,7 @@ async function Listing({
     const [{ data: viewer }, { data: existing }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("role, is_smoker, is_shift_worker, tolerates_noise")
+        .select("role, is_admin, is_smoker, is_shift_worker, tolerates_noise")
         .eq("id", viewerId)
         .maybeSingle(),
       supabase
@@ -94,7 +94,10 @@ async function Listing({
         .maybeSingle(),
     ]);
 
-    if (!viewer || viewer.role !== "tenant") {
+    if (viewer?.is_admin) {
+      // Administrators can edit any listing, but cannot contact landlords as a tenant.
+      status = { kind: "admin", listingId: listing.id };
+    } else if (!viewer || viewer.role !== "tenant") {
       status = { kind: "landlord" };
     } else if (existing) {
       status = { kind: "existing", href: `/messages?c=${existing.id}` };

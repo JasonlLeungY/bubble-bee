@@ -12,6 +12,7 @@ export type ContactStatus =
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
   | { kind: "owner"; listingId: string; title: string }
+  | { kind: "admin"; listingId: string }
   | { kind: "landlord" };
 
 const baseClass =
@@ -41,6 +42,13 @@ export default function ContactButton({
     );
   }
   // Only ever sent to the listing's own landlord (see the listing page).
+  if (status.kind === "admin") {
+    return (
+      <Link href={`/listings/${status.listingId}/edit`} className={`${primaryClass} ${width}`}>
+        Edit listing
+      </Link>
+    );
+  }
   if (status.kind === "owner") {
     return (
       <div className={`flex gap-2 ${width}`}>

@@ -76,3 +76,16 @@ A tenant trait that is switched on needs the matching house rule switched on:
 The rule lives in two places that must stay in step: `utils/lifestyle.ts`
 (for the page and the friendly error) and the insert policy on
 `public.conversations` (which enforces it even if the app is bypassed).
+
+## Administrators
+
+Administrators can edit any listing. Owners can edit their own listings, and
+only owners can delete one. Nobody can make themselves an administrator from
+the app. Grant it in the Supabase SQL Editor, using the person's sign-in email:
+
+```sql
+update public.profiles set is_admin = true
+where id = (select id from auth.users where email = 'admin@example.com');
+```
+
+To remove it, set `is_admin` back to `false` the same way.

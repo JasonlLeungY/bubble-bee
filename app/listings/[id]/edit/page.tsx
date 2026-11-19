@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import ListingForm from "@/components/ListingForm";
+import { isAdminUser } from "@/utils/access";
 import { UUID } from "@/utils/lifestyle";
 import { createClient } from "@/utils/supabase/server";
 
@@ -49,8 +50,10 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
     .maybeSingle();
   if (!listing) notFound();
 
-  // Someone else's listing: send them to the public page instead of the form.
-  if (listing.landlord_id !== userId) redirect(`/listings/${id}`);
+  // Only the owner and administrators may edit. Anyone else goes to the public page.
+  if (listing.landlord_id !== userId && !(await isAdminUser(supabase, userId))) {
+    redirect(`/listings/${id}`);
+  }
 
   return (
     <ListingForm
