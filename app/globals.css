@@ -16,44 +16,10 @@
 }
 
 /*
- * Dark theme. The palette's colour variables are swapped, so every class that
- * uses a colour follows: text-neutral-900 becomes light, bg-white becomes dark.
- * Used when the visitor's system is dark and they have not chosen a theme, or
- * when they choose dark. data-theme="light" always wins.
+ * Dark theme. The app opens light, whatever the device setting is. Dark is
+ * used only when the visitor picks it with the toggle. The palette's colour
+ * variables are swapped, so every class that uses a colour follows.
  */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --color-white: #0a0a0a;
-    --color-neutral-50: #0a0a0a;
-    --color-neutral-100: #161616;
-    --color-neutral-200: #232323;
-    --color-neutral-300: #3a3a3a;
-    --color-neutral-400: #8c8c8c;
-    --color-neutral-500: #9a9a9a;
-    --color-neutral-600: #b5b5b5;
-    --color-neutral-700: #d4d4d4;
-    --color-neutral-800: #e5e5e5;
-    --color-neutral-900: #f5f5f5;
-    --color-neutral-950: #fafafa;
-    --color-rose-50: #4c0519;
-    --color-rose-100: #881337;
-    --color-rose-200: #9f1239;
-    --color-rose-800: #fecdd3;
-    --color-rose-900: #ffe4e6;
-    --color-rose-950: #fff1f2;
-    --color-emerald-50: #022c22;
-    --color-emerald-100: #064e3b;
-    --color-emerald-200: #065f46;
-    --color-emerald-800: #a7f3d0;
-    --color-emerald-900: #d1fae5;
-    --color-emerald-950: #ecfdf5;
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --text-brand: #eab308;
-  }
-}
-
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-white: #0a0a0a;

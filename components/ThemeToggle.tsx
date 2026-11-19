@@ -3,30 +3,24 @@
 import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "bubble-bee-theme";
-const SYSTEM_DARK = "(prefers-color-scheme: dark)";
 
 // The theme is whatever the page shows: the attribute the toggle or the saved
-// choice sets, otherwise the system setting. Watching both keeps the icon right.
+// choice sets. Watching it keeps the icon right.
 function subscribe(callback: () => void) {
   const observer = new MutationObserver(callback);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  const media = window.matchMedia(SYSTEM_DARK);
-  media.addEventListener("change", callback);
-  return () => {
-    observer.disconnect();
-    media.removeEventListener("change", callback);
-  };
+  return () => observer.disconnect();
 }
 
+// The app opens light. Dark is used only once the visitor chooses it.
 function getSnapshot(): "light" | "dark" {
   const applied = document.documentElement.getAttribute("data-theme");
-  if (applied === "light" || applied === "dark") return applied;
-  return window.matchMedia(SYSTEM_DARK).matches ? "dark" : "light";
+  return applied === "dark" ? "dark" : "light";
 }
 
 /**
- * Switches between light and dark. The first visit follows the system setting;
- * after that the choice is remembered in this browser. The layout applies the
+ * Switches between light and dark. The app opens light; the choice is
+ * remembered in this browser. The layout applies the
  * saved choice before the page paints, so there is no flash.
  */
 export default function ThemeToggle() {
