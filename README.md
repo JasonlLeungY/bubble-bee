@@ -89,3 +89,14 @@ where id = (select id from auth.users where email = 'admin@example.com');
 ```
 
 To remove it, set `is_admin` back to `false` the same way.
+
+## Install on a phone
+
+The app installs to the home screen of iPhone and Android phones, and opens
+full screen. There is no app store download.
+
+- **iPhone (Safari):** open the site, tap the Share button, then **Add to Home Screen**.
+- **Android (Chrome):** open the site, tap the menu (three dots), then **Install app** or **Add to Home screen**.
+
+The app is not cached for offline use: listings and messages always load fresh.
+

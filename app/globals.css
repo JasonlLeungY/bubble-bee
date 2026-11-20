@@ -99,3 +99,9 @@ body,
 .listing-card * {
   color: #000000;
 }
+
+/* Keep content clear of the notch and home indicator on iPhone. */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
