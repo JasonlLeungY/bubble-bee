@@ -178,6 +178,13 @@ async function Hub() {
                       {job.employer} · {job.suburb} · {job.pay}
                     </p>
                   </Link>
+                  <Link
+                    href={`/dashboard/jobs/${job.id}/edit`}
+                    aria-label={`Edit ${job.title}`}
+                    className="hive shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                  >
+                    Edit
+                  </Link>
                   <DeleteJobButton jobId={job.id} title={job.title} />
                 </li>
               ))}

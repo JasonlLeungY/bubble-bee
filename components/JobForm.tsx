@@ -2,15 +2,28 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { createJob, type JobState } from "@/app/dashboard/jobs/actions";
+import { createJob, updateJob, type JobState } from "@/app/dashboard/jobs/actions";
+import type { JobFields } from "@/utils/job-form";
 
 const labelClass = "block text-sm font-semibold";
 const inputClass =
   "mt-1.5 block w-full rounded-lg border border-neutral-400 bg-white px-3.5 py-3 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900";
 
-export default function JobForm() {
-  const [state, formAction, saving] = useActionState<JobState, FormData>(createJob, {});
-  const value = (name: string) => state.fields?.[name] ?? "";
+export default function JobForm({
+  mode = "create",
+  jobId,
+  initial,
+}: {
+  mode?: "create" | "edit";
+  jobId?: string;
+  initial?: JobFields;
+}) {
+  const isEdit = mode === "edit" && Boolean(jobId);
+  const [state, formAction, saving] = useActionState<JobState, FormData>(
+    (prev, formData) => (isEdit ? updateJob(jobId ?? "", prev, formData) : createJob(prev, formData)),
+    {},
+  );
+  const value = (name: keyof JobFields) => state.fields?.[name] ?? initial?.[name] ?? "";
 
   return (
     <form action={formAction} className="mt-6 space-y-6">
@@ -55,7 +68,7 @@ export default function JobForm() {
           disabled={saving}
           className="hive cursor-pointer rounded-lg bg-rose-600 px-5 py-3 text-base font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? "Posting…" : "Post job"}
+          {saving ? "Saving…" : isEdit ? "Save job" : "Post job"}
         </button>
         <Link href="/dashboard" className="text-sm font-semibold underline underline-offset-2">
           Cancel
