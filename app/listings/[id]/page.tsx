@@ -174,6 +174,16 @@ async function Listing({
             </div>
           </dl>
 
+          {(status.kind === "can-contact" || status.kind === "existing") && (
+            <div className="mt-8 border-t border-neutral-200 pt-8 lg:hidden">
+              <MessageLandlord
+                listingId={listing.id}
+                id="message-landlord"
+                conversationHref={status.kind === "existing" ? status.href : undefined}
+              />
+            </div>
+          )}
+
           <section className="mt-8 border-t border-neutral-200 pt-8">
             <h2 className="text-xl font-semibold">About this room</h2>
             {listing.description ? (
@@ -241,9 +251,6 @@ async function Listing({
               })}
             </ul>
           </section>
-          {(status.kind === "can-contact" || status.kind === "existing") && (
-            <MessageLandlord listingId={listing.id} />
-          )}
         </div>
 
         {/* Large screens: sticky card beside the content. */}
@@ -261,9 +268,19 @@ async function Listing({
                 className="text-sm"
               />
             </div>
-            <div className="mt-5">
-              <ContactButton status={status} fullWidth />
-            </div>
+            {status.kind === "can-contact" || status.kind === "existing" ? (
+              <div className="mt-5 border-t border-neutral-200 pt-5">
+                <MessageLandlord
+                  listingId={listing.id}
+                  compact
+                  conversationHref={status.kind === "existing" ? status.href : undefined}
+                />
+              </div>
+            ) : (
+              <div className="mt-5">
+                <ContactButton status={status} fullWidth />
+              </div>
+            )}
             {status.kind === "mismatch" && (
               <div className="mt-4 text-sm text-neutral-600">
                 <ul className="space-y-1">
