@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { signOut } from "@/app/login/actions";
 import { createClient } from "@/utils/supabase/server";
 import BeeLogo from "./BeeLogo";
 
@@ -13,7 +14,7 @@ export default function SiteHeader() {
           className="flex items-center gap-2 rounded-lg text-lg font-bold tracking-tight text-yellow-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-600"
         >
           <BeeLogo className="h-9 w-9" />
-          Bubble Bee
+          <span className="hidden sm:inline">Bubble Bee</span>
         </Link>
 
         <nav className="flex items-center gap-2 text-sm font-semibold">
@@ -46,6 +47,11 @@ async function AccountLinks() {
         <Link href="/dashboard" className={pillClass}>
           Dashboard
         </Link>
+        <form action={signOut}>
+          <button type="submit" className={`${pillClass} cursor-pointer`}>
+            Log out
+          </button>
+        </form>
       </>
     );
   }
