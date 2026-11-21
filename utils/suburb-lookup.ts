@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 // Finds the centre of a suburb for the listing map. Server-side only.
 //
 // Order: 1) the suburb_locations table, 2) this server's memory, 3) a
-// Nominatim lookup (OpenStreetMap). A lookup result is saved to the table, so
-// each suburb is looked up at most once, as Nominatim's usage policy asks.
+// Google Geocoding lookup. A lookup result is saved to the table, so
+// each suburb is looked up at most once.
 //
 // Only suburbs that a published listing uses are looked up, so this cannot be
 // used to send arbitrary searches to the geocoder.
@@ -20,9 +20,15 @@ export type SuburbPoint = {
 // names such as "Wynn Vale.").
 export const SUBURB_PATTERN = /^[A-Za-z][A-Za-z.' -]{0,79}$/;
 
-const SEARCH_URL = process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org/search";
-const USER_AGENT = "sharehouse-marketplace/1.0 (suburb map lookup)";
-const PLACE_TYPES = ["suburb", "neighbourhood", "quarter", "locality", "village", "town", "city"];
+const GEOCODE_URL = process.env.GOOGLE_GEOCODE_URL ?? "https://maps.googleapis.com/maps/api/geocode/json";
+// Google's types for a suburb-sized place.
+const PLACE_TYPES = ["locality", "sublocality", "sublocality_level_1", "neighborhood", "postal_town"];
+
+type GoogleResult = {
+  geometry: { location: { lat: number; lng: number } };
+  types: string[];
+  address_components: { long_name: string; short_name: string; types: string[] }[];
+};
 
 const memory = new Map<string, SuburbPoint>();
 const inflight = new Map<string, Promise<SuburbPoint | null>>();
@@ -50,7 +56,7 @@ function inAustralia(latitude: number, longitude: number) {
   return latitude >= -44 && latitude <= -10 && longitude >= 112 && longitude <= 154;
 }
 
-// One Nominatim request at a time, at least 1.1 s apart.
+// One geocoding request at a time, at least 1.1 s apart.
 function geocode(name: string): Promise<SuburbPoint | null> {
   const next = queue.then(() => search(name));
   queue = next.catch(() => null).then(() => new Promise((resolve) => setTimeout(resolve, 1100)));
@@ -58,40 +64,41 @@ function geocode(name: string): Promise<SuburbPoint | null> {
 }
 
 async function search(name: string): Promise<SuburbPoint | null> {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) throw new Error("GOOGLE_MAPS_API_KEY is not set.");
+
   // Drop a trailing full stop before searching; keep the name as the listing has it.
   const query = name.replace(/\.$/, "").trim();
-  const url = new URL(SEARCH_URL);
+  const url = new URL(GEOCODE_URL);
   url.search = new URLSearchParams({
-    q: `${query}, Australia`,
-    format: "jsonv2",
-    countrycodes: "au",
-    addressdetails: "1",
-    limit: "5",
+    address: `${query}, Australia`,
+    components: "country:AU",
+    region: "au",
+    key,
   }).toString();
 
-  const response = await fetch(url, {
-    headers: { "user-agent": USER_AGENT, "accept-language": "en" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
+  // Errors name the status only: the URL holds the key and must never be logged.
+  const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`Geocoder returned ${response.status}`);
 
-  const results = (await response.json()) as Array<{
-    lat: string;
-    lon: string;
-    addresstype?: string;
-    address?: { state?: string };
-  }>;
-  // Only accept a place that is a suburb-level area, never a street.
-  const place = results.find((result) => PLACE_TYPES.includes(result.addresstype ?? ""));
+  const body = (await response.json()) as { status: string; results?: GoogleResult[] };
+  if (body.status === "ZERO_RESULTS") return null;
+  if (body.status !== "OK") throw new Error(`Geocoder status ${body.status}`);
+
+  // Only accept a suburb-sized place in Australia, never a street.
+  const place = (body.results ?? []).find(
+    (result) =>
+      result.types.some((type) => PLACE_TYPES.includes(type)) &&
+      result.address_components.some((part) => part.types.includes("country") && part.short_name === "AU"),
+  );
   if (!place) return null;
 
-  const latitude = Number(place.lat);
-  const longitude = Number(place.lon);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !inAustralia(latitude, longitude)) {
-    return null;
-  }
-  return { suburb: name, state: place.address?.state ?? null, latitude, longitude };
+  const { lat: latitude, lng: longitude } = place.geometry.location;
+  if (!inAustralia(latitude, longitude)) return null;
+
+  const state =
+    place.address_components.find((part) => part.types.includes("administrative_area_level_1"))?.long_name ?? null;
+  return { suburb: name, state, latitude, longitude };
 }
 
 async function remember(key: string, point: SuburbPoint) {
@@ -105,7 +112,7 @@ async function remember(key: string, point: SuburbPoint) {
         state: point.state,
         latitude: point.latitude,
         longitude: point.longitude,
-        source: "nominatim",
+        source: "google",
       },
       { onConflict: "suburb_key", ignoreDuplicates: true },
     );
