@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readJobForm, type JobFields } from "@/utils/job-form";
+import { suburbProblem } from "@/utils/suburb-lookup";
 import { UUID } from "@/utils/lifestyle";
 import { createClient } from "@/utils/supabase/server";
 
@@ -20,6 +21,8 @@ export async function createJob(_prevState: JobState, formData: FormData): Promi
 
   const { fields, error } = readJobForm(formData);
   if (error) return { error, fields };
+  const problem = await suburbProblem(fields.suburb);
+  if (problem) return { error: problem, fields };
 
   const { error: insertError } = await supabase.from("job_posts").insert({
     poster_id: userId,
@@ -48,6 +51,8 @@ export async function updateJob(jobId: string, _prevState: JobState, formData: F
 
   const { fields, error } = readJobForm(formData);
   if (error) return { error, fields };
+  const problem = await suburbProblem(fields.suburb);
+  if (problem) return { error: problem, fields };
 
   const { data: updated, error: updateError } = await supabase
     .from("job_posts")

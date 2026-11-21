@@ -6,6 +6,7 @@ import { isAdminUser } from "@/utils/access";
 import { ABOUT_MAX_WORDS, countWords } from "@/utils/words";
 import { UUID } from "@/utils/lifestyle";
 import { listingImagePath, readListingForm, type ListingFields } from "@/utils/listing-form";
+import { suburbProblem } from "@/utils/suburb-lookup";
 import { createClient } from "@/utils/supabase/server";
 
 export type ListingState = {
@@ -31,6 +32,8 @@ export async function createListing(
   if (!parsed.values) {
     return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
   }
+  const problem = await suburbProblem(parsed.values.suburb);
+  if (problem) return { error: problem, fields: parsed.fields };
 
   const { error } = await supabase
     .from("listings")
@@ -84,6 +87,8 @@ export async function updateListing(
   if (!parsed.values) {
     return { error: parsed.error ?? "Check the form and try again.", fields: parsed.fields };
   }
+  const problem = await suburbProblem(parsed.values.suburb);
+  if (problem) return { error: problem, fields: parsed.fields };
   const values = parsed.values;
 
   const { data: updated, error } = await supabase

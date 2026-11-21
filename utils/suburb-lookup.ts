@@ -165,3 +165,56 @@ export async function findSuburb(name: string): Promise<SuburbPoint | null> {
     inflight.delete(key);
   }
 }
+
+/**
+ * For saving a listing or a job: the suburb must be a real place in Australia.
+ * Unlike findSuburb, this does not require a listing to exist first. A place
+ * found once is remembered, so it is looked up at most once.
+ *
+ * Returns the place, or null when the geocoder has no Australian place by that
+ * name. Throws when the geocoder cannot be reached.
+ */
+export async function verifyAustralianSuburb(name: string): Promise<SuburbPoint | null> {
+  const trimmed = name.trim();
+  const key = trimmed.toLowerCase();
+
+  const { data: row } = await publicClient()
+    .from("suburb_locations")
+    .select("suburb, state, latitude, longitude")
+    .eq("suburb_key", key)
+    .maybeSingle();
+  if (row) {
+    return { suburb: row.suburb, state: row.state, latitude: row.latitude, longitude: row.longitude };
+  }
+
+  const known = memory.get(key);
+  if (known) return known;
+
+  const pending =
+    inflight.get(key) ??
+    (async () => {
+      const point = await geocode(trimmed);
+      if (point) {
+        memory.set(key, point);
+        await remember(key, point);
+      }
+      return point;
+    })();
+  inflight.set(key, pending);
+  try {
+    return await pending;
+  } finally {
+    inflight.delete(key);
+  }
+}
+
+/** The message to show when a suburb cannot be accepted, or null if it can. */
+export async function suburbProblem(name: string): Promise<string | null> {
+  try {
+    const point = await verifyAustralianSuburb(name);
+    return point ? null : `We could not find "${name.trim()}" in Australia. Check the suburb name.`;
+  } catch (error) {
+    console.error("Suburb check failed", error);
+    return "We could not check the suburb just now. Try again in a moment.";
+  }
+}
