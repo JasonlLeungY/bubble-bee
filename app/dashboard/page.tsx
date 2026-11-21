@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import DeleteListingButton from "@/components/DeleteListingButton";
 import { signOut } from "@/app/login/actions";
+import AboutForm from "@/components/AboutForm";
 import { formatPrice } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
 import LifestyleForm from "./lifestyle-form";
@@ -43,6 +44,10 @@ async function Hub() {
     .eq("id", userId)
     .maybeSingle();
   const isLandlord = profile?.role === "landlord";
+  const { data: aboutRow } =
+    profile?.role === "tenant"
+      ? await supabase.from("tenant_profiles").select("about").eq("tenant_id", userId).maybeSingle()
+      : { data: null };
 
   const { data: listings } = isLandlord
     ? await supabase
@@ -137,6 +142,8 @@ async function Hub() {
           )}
         </section>
       ) : (
+        <>
+        <AboutForm initial={aboutRow?.about ?? ""} />
         <section className="mt-8">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold">Your lifestyle</h2>
@@ -161,6 +168,7 @@ async function Hub() {
             />
           </div>
         </section>
+        </>
       )}
     </>
   );

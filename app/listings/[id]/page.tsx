@@ -9,6 +9,7 @@ import SuburbMapButton from "@/components/SuburbMapButton";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
+import MessageLandlord from "@/components/MessageLandlord";
 import ContactButton, { type ContactStatus } from "./contact-button";
 
 const listedOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" });
@@ -236,6 +237,9 @@ async function Listing({
               })}
             </ul>
           </section>
+          {(status.kind === "can-contact" || status.kind === "existing") && (
+            <MessageLandlord listingId={listing.id} />
+          )}
         </div>
 
         {/* Large screens: sticky card beside the content. */}

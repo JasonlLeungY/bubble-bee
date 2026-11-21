@@ -140,6 +140,18 @@ async function Inbox({
     messages = rows ?? [];
   }
 
+  // Landlords may read a tenant's description (the database only allows it
+  // once they have a conversation together).
+  let tenantAbout: string | null = null;
+  if (selected && selected.landlord_id === userId) {
+    const { data: row } = await supabase
+      .from("tenant_profiles")
+      .select("about")
+      .eq("tenant_id", selected.tenant_id)
+      .maybeSingle();
+    tenantAbout = row?.about?.trim() ? row.about : null;
+  }
+
   const otherParty = (conversation: Conversation) =>
     conversation.tenant_id === userId
       ? { name: displayName(conversation.landlord), role: "Landlord" }
@@ -223,6 +235,16 @@ async function Inbox({
                   ? `${selected.listing.title}, ${selected.listing.suburb}`
                   : "View listing"}
               </Link>
+              {tenantAbout && (
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer font-semibold underline underline-offset-2">
+                    About {otherParty(selected).name}
+                  </summary>
+                  <p className="mt-2 max-h-60 overflow-y-auto break-words whitespace-pre-line text-neutral-700">
+                    {tenantAbout}
+                  </p>
+                </details>
+              )}
             </header>
 
             <ol className="flex min-h-0 flex-1 flex-col-reverse gap-2 overflow-y-auto px-4 py-4">

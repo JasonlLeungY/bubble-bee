@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isAdminUser } from "@/utils/access";
+import { ABOUT_MAX_WORDS, countWords } from "@/utils/words";
 import { UUID } from "@/utils/lifestyle";
 import { listingImagePath, readListingForm, type ListingFields } from "@/utils/listing-form";
 import { createClient } from "@/utils/supabase/server";
@@ -198,4 +199,48 @@ export async function deleteListing(listingId: string): Promise<ListingState> {
   revalidatePath("/");
   revalidatePath(`/listings/${listingId}`);
   redirect("/dashboard");
+}
+
+export type AboutState = { saved?: boolean; error?: string; about?: string };
+
+/** Saves the tenant's description for landlords, up to ABOUT_MAX_WORDS words. */
+export async function saveTenantAbout(_prevState: AboutState, formData: FormData): Promise<AboutState> {
+  const raw = formData.get("about");
+  const about = typeof raw === "string" ? raw.trim() : "";
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
+  if (!userId) redirect("/login");
+
+  if (countWords(about) > ABOUT_MAX_WORDS) {
+    return { error: `Keep it to ${ABOUT_MAX_WORDS.toLocaleString()} words or fewer.`, about };
+  }
+  if (about.length > 20000) {
+    return { error: "That is too long. Shorten it and try again.", about };
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if (profile?.role !== "tenant") {
+    return { error: "Only tenant accounts can add a description.", about };
+  }
+
+  // Update the row if there is one, otherwise insert it. (An upsert would also
+  // need table-wide update permission, which is deliberately not granted.)
+  const now = new Date().toISOString();
+  const { data: existing } = await supabase
+    .from("tenant_profiles")
+    .select("tenant_id")
+    .eq("tenant_id", userId)
+    .maybeSingle();
+  const { error } = existing
+    ? await supabase.from("tenant_profiles").update({ about, updated_at: now }).eq("tenant_id", userId)
+    : await supabase.from("tenant_profiles").insert({ tenant_id: userId, about, updated_at: now });
+  if (error) {
+    return { error: "We could not save your description. Try again.", about };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/messages");
+  return { saved: true, about };
 }

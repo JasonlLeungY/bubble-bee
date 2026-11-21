@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
 import DeleteListingButton from "@/components/DeleteListingButton";
-import { initiateContact, type ContactState } from "./actions";
 
 /** Worked out on the server for whoever is viewing the listing. */
 export type ContactStatus =
@@ -67,7 +65,11 @@ export default function ContactButton({
     );
   }
   if (status.kind === "can-contact") {
-    return <ContactForm listingId={status.listingId} width={width} />;
+    return (
+      <Link href="#message-landlord" className={`${primaryClass} ${width}`}>
+        Message landlord
+      </Link>
+    );
   }
   return (
     <button type="button" disabled className={`${disabledClass} ${width}`}>
@@ -76,26 +78,3 @@ export default function ContactButton({
   );
 }
 
-function ContactForm({ listingId, width }: { listingId: string; width: string }) {
-  // The listing id is fixed here on purpose: it never comes from form input.
-  const [state, formAction, pending] = useActionState<ContactState>(
-    () => initiateContact(listingId),
-    {},
-  );
-
-  return (
-    <form action={formAction} className={width}>
-      {state.error && (
-        <p
-          role="alert"
-          className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
-        >
-          {state.error}
-        </p>
-      )}
-      <button type="submit" disabled={pending} className={`${primaryClass} ${width}`}>
-        {pending ? "Opening…" : "Contact Landlord"}
-      </button>
-    </form>
-  );
-}
