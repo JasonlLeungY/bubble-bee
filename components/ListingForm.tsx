@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { createListing, updateListing, type ListingState } from "@/app/dashboard/actions";
 import ImageUploader from "@/components/ImageUploader";
+import { LEASE_TERMS, PARKING_OPTIONS } from "@/utils/listing-form";
 
 /** The saved values of a listing, used to fill the form when editing. */
 export type InitialListing = {
@@ -18,6 +19,12 @@ export type InitialListing = {
   is_smoker_allowed: boolean;
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
+  ladies_only: boolean;
+  lease_term: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  parking: string | null;
+  parking_other: string | null;
 };
 
 const RULES = [
@@ -38,6 +45,12 @@ const RULES = [
     field: "toleratesNoise",
     title: "Tolerates late noise",
     hint: "Music or guests in the evening are okay.",
+  },
+  {
+    name: "ladies_only",
+    field: "ladiesOnly",
+    title: "Ladies only sharehouse",
+    hint: "Only women live in this house.",
   },
 ] as const;
 
@@ -235,6 +248,89 @@ export default function ListingForm({
           savedUrls={savedUrls}
         />
       </div>
+
+      <fieldset>
+        <legend className={labelClass}>The house</legend>
+        <div className="mt-1.5 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label htmlFor="bedrooms" className={labelClass}>Bedrooms in the house</label>
+            <input
+              id="bedrooms"
+              name="bedrooms"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={20}
+              step={1}
+              className={inputClass}
+              defaultValue={state.fields?.bedrooms ?? initial?.bedrooms ?? ""}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="bathrooms" className={labelClass}>Bathrooms in the house</label>
+            <input
+              id="bathrooms"
+              name="bathrooms"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={20}
+              step={1}
+              className={inputClass}
+              defaultValue={state.fields?.bathrooms ?? initial?.bathrooms ?? ""}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="lease_term" className={labelClass}>Available for</label>
+            <select
+              id="lease_term"
+              name="lease_term"
+              className={inputClass}
+              defaultValue={state.fields?.leaseTerm ?? initial?.lease_term ?? ""}
+              required
+            >
+              <option value="" disabled>Choose a period</option>
+              {LEASE_TERMS.map((term) => (
+                <option key={term.value} value={term.value}>
+                  {term.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <p className={labelClass}>Parking</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {PARKING_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className="cursor-pointer rounded-lg border border-neutral-400 px-3.5 py-2.5 text-sm font-medium has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-900"
+                >
+                  <input
+                    type="radio"
+                    name="parking"
+                    value={option.value}
+                    className="sr-only"
+                    defaultChecked={(state.fields?.parking ?? initial?.parking) === option.value}
+                    required
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <input
+              id="parking_other"
+              name="parking_other"
+              type="text"
+              maxLength={80}
+              placeholder="Describe the parking if it is other"
+              className={`${inputClass} mt-2`}
+              defaultValue={state.fields?.parkingOther ?? initial?.parking_other ?? ""}
+            />
+          </div>
+        </div>
+      </fieldset>
 
       <fieldset>
         <legend className={labelClass}>What is included</legend>

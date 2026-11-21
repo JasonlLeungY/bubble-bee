@@ -5,7 +5,24 @@
 export const MAX_IMAGES = 9;
 const MAX_PRICE = 100_000;
 const MAX_BOND = 100_000;
+const MAX_ROOMS = 20;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** How long the room is available for. */
+export const LEASE_TERMS = [
+  { value: "1_month", label: "1 month" },
+  { value: "3_months", label: "3 months" },
+  { value: "6_months", label: "6 months" },
+  { value: "12_months", label: "12 months" },
+  { value: "ongoing", label: "Ongoing" },
+] as const;
+
+/** Parking the house has. "Other" is described by the landlord. */
+export const PARKING_OPTIONS = [
+  { value: "street", label: "Street" },
+  { value: "garage", label: "Garage" },
+  { value: "other", label: "Other" },
+] as const;
 
 /** What the form shows again after an error. */
 export type ListingFields = {
@@ -19,6 +36,12 @@ export type ListingFields = {
   isSmokerAllowed: boolean;
   isShiftWorkerFriendly: boolean;
   toleratesNoise: boolean;
+  ladiesOnly: boolean;
+  leaseTerm: string;
+  bedrooms: string;
+  bathrooms: string;
+  parking: string;
+  parkingOther: string;
 };
 
 /** The columns written to public.listings. */
@@ -33,8 +56,21 @@ export type ListingValues = {
   is_smoker_allowed: boolean;
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
+  ladies_only: boolean;
+  lease_term: string;
+  bedrooms: number;
+  bathrooms: number;
+  parking: string;
+  parking_other: string | null;
   image_urls: string[];
 };
+
+/** A whole number between min and max, or null. */
+function wholeNumber(value: string, min: number, max: number): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  const n = Number(value);
+  return n >= min && n <= max ? n : null;
+}
 
 export function readListingForm(
   formData: FormData,
@@ -56,6 +92,12 @@ export function readListingForm(
     isSmokerAllowed: formData.get("is_smoker_allowed") === "on",
     isShiftWorkerFriendly: formData.get("is_shift_worker_friendly") === "on",
     toleratesNoise: formData.get("tolerates_noise") === "on",
+    ladiesOnly: formData.get("ladies_only") === "on",
+    leaseTerm: text("lease_term"),
+    bedrooms: text("bedrooms"),
+    bathrooms: text("bathrooms"),
+    parking: text("parking"),
+    parkingOther: text("parking_other"),
   };
   const imageUrls = formData
     .getAll("image_urls")
@@ -75,6 +117,24 @@ export function readListingForm(
   }
   if (!fields.suburb || fields.suburb.length > 80) {
     return fail("Enter the suburb.");
+  }
+
+  const bedrooms = wholeNumber(fields.bedrooms, 1, MAX_ROOMS);
+  if (bedrooms === null) return fail("Enter how many bedrooms the house has (1 to 20).");
+  const bathrooms = wholeNumber(fields.bathrooms, 1, MAX_ROOMS);
+  if (bathrooms === null) return fail("Enter how many bathrooms the house has (1 to 20).");
+
+  if (!LEASE_TERMS.some((term) => term.value === fields.leaseTerm)) {
+    return fail("Choose how long the room is available for.");
+  }
+  if (!PARKING_OPTIONS.some((option) => option.value === fields.parking)) {
+    return fail("Choose the parking: street, garage or other.");
+  }
+  if (fields.parking === "other" && !fields.parkingOther) {
+    return fail("Describe the parking.");
+  }
+  if (fields.parkingOther.length > 80) {
+    return fail("Keep the parking description under 80 characters.");
   }
 
   let availableFrom: string | null = null;
@@ -100,8 +160,8 @@ export function readListingForm(
   if (imageUrls.length > MAX_IMAGES) {
     return fail(`A listing can have up to ${MAX_IMAGES} photos.`);
   }
-  // Only photos this user uploaded to our own bucket, so a listing can never
-  // point at an arbitrary external URL.
+  // Only photos from the allowed folders, so a listing can never point at an
+  // arbitrary external URL.
   if (!imageUrls.every((url) => listingImagePath(url, folderIds) !== null)) {
     return fail("One of the photos is not valid. Remove it and try again.");
   }
@@ -120,6 +180,12 @@ export function readListingForm(
       is_smoker_allowed: fields.isSmokerAllowed,
       is_shift_worker_friendly: fields.isShiftWorkerFriendly,
       tolerates_noise: fields.toleratesNoise,
+      ladies_only: fields.ladiesOnly,
+      lease_term: fields.leaseTerm,
+      bedrooms,
+      bathrooms,
+      parking: fields.parking,
+      parking_other: fields.parking === "other" ? fields.parkingOther : null,
       image_urls: imageUrls,
     },
   };

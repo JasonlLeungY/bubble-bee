@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
+import { recordPageView } from "@/utils/analytics";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
 
@@ -35,6 +36,7 @@ export default function HomePage() {
 // Fetched per request so a new listing shows up straight away.
 async function ListingGrid() {
   await connection();
+  void recordPageView("/");
   const supabase = await createClient();
   const { data: listings, error } = await supabase
     .from("listings")
