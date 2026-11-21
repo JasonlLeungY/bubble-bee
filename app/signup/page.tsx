@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useActionState } from "react";
 import { signUp, type AuthState } from "../login/actions";
 
 const ROLE_OPTIONS = [
@@ -22,6 +23,23 @@ const ROLE_OPTIONS = [
 ];
 
 const initialState: AuthState = {};
+
+// Why the visitor was sent here, when they tried to open a listing or post one.
+const REASONS: Record<string, string> = {
+  details: "Create a free account to see the full listing and contact the landlord.",
+  post: "Create an account to list a room.",
+};
+
+// Reads the query string, so it sits behind its own Suspense boundary.
+function SignupNotice() {
+  const reason = REASONS[useSearchParams().get("reason") ?? ""];
+  if (!reason) return null;
+  return (
+    <p role="status" className="mt-4 rounded-lg border border-neutral-300 bg-neutral-50 px-3.5 py-2.5 text-sm text-neutral-800">
+      {reason}
+    </p>
+  );
+}
 
 const fieldClass =
   "block cursor-text px-4 py-2.5 focus-within:relative focus-within:z-10 focus-within:outline-2 focus-within:outline-neutral-900";
@@ -77,6 +95,9 @@ export default function SignupPage() {
             <p className="mt-1 text-sm text-neutral-500">
               Find a share house, or fill a room in yours.
             </p>
+            <Suspense fallback={null}>
+              <SignupNotice />
+            </Suspense>
 
             <form action={formAction} className="mt-6 space-y-5">
               <fieldset>

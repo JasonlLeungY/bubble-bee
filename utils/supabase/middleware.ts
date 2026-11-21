@@ -46,6 +46,10 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (!isSignedIn && isProtected) {
+    // Posting a room needs an account, so send that visitor to sign up.
+    if (pathname === "/dashboard/new" || pathname.startsWith("/dashboard/new/")) {
+      return redirectTo("/signup?reason=post", request, response);
+    }
     return redirectTo("/login", request, response);
   }
   if (isSignedIn && GUEST_ONLY_PATHS.includes(pathname)) {
@@ -63,8 +67,10 @@ function redirectTo(
   response: NextResponse,
 ) {
   const url = request.nextUrl.clone();
-  url.pathname = pathname;
-  url.search = "";
+  // A path may carry a query string, e.g. "/signup?reason=post".
+  const [path, query = ""] = pathname.split("?");
+  url.pathname = path;
+  url.search = query ? `?${query}` : "";
 
   const redirect = NextResponse.redirect(url);
   response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));

@@ -53,7 +53,7 @@ async function Listing({
   const supabase = await createClient();
   // Full details need an account: guests sign up, and tenants finish their profile first.
   const access = await viewerAccess(supabase);
-  if (access === "guest") redirect("/signup");
+  if (access === "guest") redirect("/signup?reason=details");
   if (access === "profile-incomplete") redirect("/dashboard/profile");
   const { data: listing, error } = await supabase
     .from("listings")
@@ -93,7 +93,7 @@ async function Listing({
   let status: ContactStatus;
   let conflicts: ReturnType<typeof lifestyleConflicts> = [];
 
-  if (!viewerId) redirect("/signup");
+  if (!viewerId) redirect("/signup?reason=details");
   if (viewerId === listing.landlord_id) {
     status = { kind: "owner", listingId: listing.id, title: listing.title };
   } else {
