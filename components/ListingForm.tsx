@@ -133,6 +133,31 @@ export default function ListingForm({
 
   return (
     <form action={formAction} className="space-y-6">
+      <fieldset>
+        <legend className={labelClass}>Is this an entire home or a share house?</legend>
+        <p className="mt-0.5 text-xs text-neutral-500">
+          Entire home: the whole house is rented to one household. Share house: rooms in a house shared with housemates.
+        </p>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {HOME_TYPES.map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-400 px-3.5 py-3 text-sm font-medium has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-900"
+            >
+              <input
+                type="radio"
+                name="home_type"
+                value={option.value}
+                className="h-4 w-4 accent-neutral-900"
+                defaultChecked={(state.fields?.homeType ?? initial?.home_type) === option.value}
+                required
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <div>
         <label htmlFor="title" className={labelClass}>Title</label>
         <input
@@ -307,28 +332,6 @@ export default function ListingForm({
               defaultValue={state.fields?.parkingOther ?? initial?.parking_other ?? ""}
             />
           </div>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend className={labelClass}>What is being rented?</legend>
-        <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {HOME_TYPES.map((option) => (
-            <label
-              key={option.value}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-400 px-3.5 py-3 text-sm font-medium has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-900"
-            >
-              <input
-                type="radio"
-                name="home_type"
-                value={option.value}
-                className="h-4 w-4 accent-neutral-900"
-                defaultChecked={(state.fields?.homeType ?? initial?.home_type) === option.value}
-                required
-              />
-              {option.label}
-            </label>
-          ))}
         </div>
       </fieldset>
 
