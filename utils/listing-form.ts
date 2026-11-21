@@ -17,6 +17,9 @@ export const LEASE_TERMS = [
   { value: "ongoing", label: "Ongoing" },
 ] as const;
 
+/** Who the house is for. Enforced in the database and at contact time. */
+export const GENDER_PREFERENCE_VALUES = ["female_only", "male_only", "no_preference"] as const;
+
 /** Parking the house has. "Other" is described by the landlord. */
 export const PARKING_OPTIONS = [
   { value: "street", label: "Street" },
@@ -36,7 +39,7 @@ export type ListingFields = {
   isSmokerAllowed: boolean;
   isShiftWorkerFriendly: boolean;
   toleratesNoise: boolean;
-  ladiesOnly: boolean;
+  genderPreference: string;
   leaseTerm: string;
   bedrooms: string;
   bathrooms: string;
@@ -56,7 +59,7 @@ export type ListingValues = {
   is_smoker_allowed: boolean;
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
-  ladies_only: boolean;
+  gender_preference: string;
   lease_term: string;
   bedrooms: number;
   bathrooms: number;
@@ -92,7 +95,7 @@ export function readListingForm(
     isSmokerAllowed: formData.get("is_smoker_allowed") === "on",
     isShiftWorkerFriendly: formData.get("is_shift_worker_friendly") === "on",
     toleratesNoise: formData.get("tolerates_noise") === "on",
-    ladiesOnly: formData.get("ladies_only") === "on",
+    genderPreference: text("gender_preference"),
     leaseTerm: text("lease_term"),
     bedrooms: text("bedrooms"),
     bathrooms: text("bathrooms"),
@@ -124,6 +127,9 @@ export function readListingForm(
   const bathrooms = wholeNumber(fields.bathrooms, 1, MAX_ROOMS);
   if (bathrooms === null) return fail("Enter how many bathrooms the house has (1 to 20).");
 
+  if (!GENDER_PREFERENCE_VALUES.some((value) => value === fields.genderPreference)) {
+    return fail("Choose who the house is for: female only, male only or no preference.");
+  }
   if (!LEASE_TERMS.some((term) => term.value === fields.leaseTerm)) {
     return fail("Choose how long the room is available for.");
   }
@@ -180,7 +186,7 @@ export function readListingForm(
       is_smoker_allowed: fields.isSmokerAllowed,
       is_shift_worker_friendly: fields.isShiftWorkerFriendly,
       tolerates_noise: fields.toleratesNoise,
-      ladies_only: fields.ladiesOnly,
+      gender_preference: fields.genderPreference,
       lease_term: fields.leaseTerm,
       bedrooms,
       bathrooms,

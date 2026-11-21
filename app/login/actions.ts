@@ -106,7 +106,7 @@ export async function signUp(
     return { confirmEmail: email };
   }
 
-  redirect("/dashboard");
+  redirect(role === "tenant" ? "/dashboard/profile" : "/dashboard");
 }
 
 export async function signOut() {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { genderFits, genderPreferenceLabel } from "@/utils/gender";
 import { MISMATCH_ERROR, UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { createClient } from "@/utils/supabase/server";
 
@@ -44,7 +45,7 @@ export async function initiateContact(
   }
 
   // 1. The tenant's own profile and the listing they want to contact.
-  const [{ data: tenant }, { data: listing }] = await Promise.all([
+  const [{ data: tenant }, { data: listing }, { data: intake }] = await Promise.all([
     supabase
       .from("profiles")
       .select("role, is_smoker, is_shift_worker, tolerates_noise")
@@ -52,8 +53,13 @@ export async function initiateContact(
       .maybeSingle(),
     supabase
       .from("listings")
-      .select("id, landlord_id, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise")
+      .select("id, landlord_id, gender_preference, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise")
       .eq("id", listingId)
+      .maybeSingle(),
+    supabase
+      .from("tenant_profiles")
+      .select("gender, profile_completed_at")
+      .eq("tenant_id", userId)
       .maybeSingle(),
   ]);
 
@@ -64,7 +70,16 @@ export async function initiateContact(
     return { error: "Only tenant accounts can contact landlords.", message };
   }
 
-  // 2. The gate.
+  // 2. The gate: a finished profile, the house's gender preference, and lifestyle.
+  if (!intake?.profile_completed_at) {
+    return { error: "Complete your profile before you contact a landlord.", message };
+  }
+  if (!genderFits(listing.gender_preference, intake.gender)) {
+    return {
+      error: `This house is ${genderPreferenceLabel(listing.gender_preference).toLowerCase()}, so you cannot contact it.`,
+      message,
+    };
+  }
   if (lifestyleConflicts(tenant, listing).length > 0) {
     return { error: MISMATCH_ERROR, message };
   }

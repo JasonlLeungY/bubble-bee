@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import LocalTime from "@/components/LocalTime";
 import SiteHeader from "@/components/SiteHeader";
+import TenantCard, { TENANT_CARD_COLUMNS, type TenantCardProfile } from "@/components/TenantCard";
 import { UUID } from "@/utils/lifestyle";
 import { createClient } from "@/utils/supabase/server";
 import MessageForm from "./message-form";
@@ -140,16 +141,22 @@ async function Inbox({
     messages = rows ?? [];
   }
 
-  // Landlords may read a tenant's description (the database only allows it
-  // once they have a conversation together).
-  let tenantAbout: string | null = null;
+  // Landlords see the tenant's profile once they have a conversation together.
+  // The database allows it only then, and phone and date of birth are never read.
+  let tenantCard: { profile: TenantCardProfile; selfieUrl: string | null } | null = null;
   if (selected && selected.landlord_id === userId) {
     const { data: row } = await supabase
       .from("tenant_profiles")
-      .select("about")
+      .select(TENANT_CARD_COLUMNS)
       .eq("tenant_id", selected.tenant_id)
       .maybeSingle();
-    tenantAbout = row?.about?.trim() ? row.about : null;
+    if (row) {
+      const profile = row as unknown as TenantCardProfile;
+      const selfieUrl = profile.selfie_path
+        ? (await supabase.storage.from("tenant-avatars").createSignedUrl(profile.selfie_path, 3600)).data?.signedUrl ?? null
+        : null;
+      tenantCard = { profile, selfieUrl };
+    }
   }
 
   const otherParty = (conversation: Conversation) =>
@@ -235,15 +242,12 @@ async function Inbox({
                   ? `${selected.listing.title}, ${selected.listing.suburb}`
                   : "View listing"}
               </Link>
-              {tenantAbout && (
-                <details className="mt-2 text-sm">
-                  <summary className="cursor-pointer font-semibold underline underline-offset-2">
-                    About {otherParty(selected).name}
-                  </summary>
-                  <p className="mt-2 max-h-60 overflow-y-auto break-words whitespace-pre-line text-neutral-700">
-                    {tenantAbout}
-                  </p>
-                </details>
+              {tenantCard && (
+                <TenantCard
+                  profile={tenantCard.profile}
+                  selfieUrl={tenantCard.selfieUrl}
+                  fallbackName={displayName(selected.tenant)}
+                />
               )}
             </header>
 

@@ -7,6 +7,7 @@ import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import SuburbMapButton from "@/components/SuburbMapButton";
 import { isAdminUser } from "@/utils/access";
+import { genderFits } from "@/utils/gender";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { recordPageView } from "@/utils/analytics";
@@ -52,7 +53,7 @@ async function Listing({
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, ladies_only, lease_term, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, gender_preference, lease_term, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -72,6 +73,12 @@ async function Listing({
     ? listing.landlord[0]
     : listing.landlord;
   const hostName = hostRow?.first_name?.trim() || null;
+  const housemateText =
+    listing.gender_preference === "female_only"
+      ? "Female only sharehouse"
+      : listing.gender_preference === "male_only"
+        ? "Male only sharehouse"
+        : "Open to any gender";
   void recordPageView(`/listings/${listing.id}`);
 
   // Work out, on the server, what the contact button should be for whoever is
@@ -90,7 +97,7 @@ async function Listing({
   } else if (viewerId === listing.landlord_id) {
     status = { kind: "owner", listingId: listing.id, title: listing.title };
   } else {
-    const [{ data: viewer }, { data: existing }] = await Promise.all([
+    const [{ data: viewer }, { data: existing }, { data: tenantIntake }] = await Promise.all([
       supabase
         .from("profiles")
         .select("role, is_smoker, is_shift_worker, tolerates_noise")
@@ -100,6 +107,11 @@ async function Listing({
         .from("conversations")
         .select("id")
         .eq("listing_id", listing.id)
+        .eq("tenant_id", viewerId)
+        .maybeSingle(),
+      supabase
+        .from("tenant_profiles")
+        .select("gender, profile_completed_at")
         .eq("tenant_id", viewerId)
         .maybeSingle(),
     ]);
@@ -114,6 +126,10 @@ async function Listing({
       status = { kind: "landlord" };
     } else if (existing) {
       status = { kind: "existing", href: `/messages?c=${existing.id}` };
+    } else if (!tenantIntake?.profile_completed_at) {
+      status = { kind: "incomplete" };
+    } else if (!genderFits(listing.gender_preference, tenantIntake.gender)) {
+      status = { kind: "gender" };
     } else {
       conflicts = lifestyleConflicts(viewer, listing);
       status =
@@ -200,9 +216,7 @@ async function Listing({
               <dd className="font-semibold">{listing.lease_term ? leaseLabels[listing.lease_term] : "Not stated"}</dd>
             </div>
           </dl>
-          {listing.ladies_only && (
-            <p className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-800">Ladies only sharehouse</p>
-          )}
+          <p className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-800">{housemateText}</p>
 
           {(status.kind === "can-contact" || status.kind === "existing") && (
             <div className="mt-8 border-t border-neutral-200 pt-8 lg:hidden">

@@ -8,7 +8,6 @@ import { signOut } from "@/app/login/actions";
 import AboutForm from "@/components/AboutForm";
 import { formatPrice } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
-import LifestyleForm from "./lifestyle-form";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -40,14 +39,21 @@ async function Hub() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("first_name, role, is_smoker, is_shift_worker, tolerates_noise")
+    .select("first_name, role")
     .eq("id", userId)
     .maybeSingle();
   const isLandlord = profile?.role === "landlord";
-  const { data: aboutRow } =
+  const { data: intake } =
     profile?.role === "tenant"
-      ? await supabase.from("tenant_profiles").select("about").eq("tenant_id", userId).maybeSingle()
+      ? await supabase
+          .from("tenant_profiles")
+          .select("about, profile_completed_at, preferred_name, full_name")
+          .eq("tenant_id", userId)
+          .maybeSingle()
       : { data: null };
+
+  // A tenant finishes their profile before anything else.
+  if (profile?.role === "tenant" && !intake?.profile_completed_at) redirect("/dashboard/profile");
 
   const { data: listings } = isLandlord
     ? await supabase
@@ -143,31 +149,31 @@ async function Hub() {
         </section>
       ) : (
         <>
-        <AboutForm initial={aboutRow?.about ?? ""} />
-        <section className="mt-8">
+        <section className="mt-8 rounded-2xl border border-neutral-200 p-5">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold">Your lifestyle</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold">Your profile</h2>
+              <p className="mt-1 text-sm text-neutral-500">
+                Landlords see this after you message them. {intake?.preferred_name || intake?.full_name ? `Shown as ${intake.preferred_name || intake.full_name}.` : ""}
+              </p>
+            </div>
             <Link
-              href="/"
-              className="hive rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              href="/dashboard/profile"
+              className="hive shrink-0 rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
             >
-              Browse rooms
+              Edit profile
             </Link>
           </div>
-          <p className="mt-1 text-sm text-neutral-500">
-            Landlords set house rules. You can only contact houses whose rules
-            fit the answers below, so keep them honest.
-          </p>
-          <div className="mt-4">
-            <LifestyleForm
-              initial={{
-                isSmoker: profile?.is_smoker ?? false,
-                isShiftWorker: profile?.is_shift_worker ?? false,
-                toleratesNoise: profile?.tolerates_noise ?? false,
-              }}
-            />
-          </div>
         </section>
+        <AboutForm initial={intake?.about ?? ""} />
+        <div className="mt-8">
+          <Link
+            href="/"
+            className="hive inline-block rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            Browse rooms
+          </Link>
+        </div>
         </>
       )}
     </>

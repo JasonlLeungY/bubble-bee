@@ -112,54 +112,6 @@ export async function updateListing(
   redirect(`/listings/${listingId}?saved=1`);
 }
 
-export type LifestyleState = {
-  saved?: boolean;
-  error?: string;
-  values?: {
-    isSmoker: boolean;
-    isShiftWorker: boolean;
-    toleratesNoise: boolean;
-  };
-};
-
-/** Saves the tenant's own lifestyle answers, which the contact gate reads. */
-export async function updateLifestyle(
-  _prevState: LifestyleState,
-  formData: FormData,
-): Promise<LifestyleState> {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (!userId) redirect("/login");
-
-  const values = {
-    isSmoker: formData.get("is_smoker") === "on",
-    isShiftWorker: formData.get("is_shift_worker") === "on",
-    toleratesNoise: formData.get("tolerates_noise") === "on",
-  };
-
-  // Row Level Security only lets a user update their own profile row.
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      is_smoker: values.isSmoker,
-      is_shift_worker: values.isShiftWorker,
-      tolerates_noise: values.toleratesNoise,
-    })
-    .eq("id", userId);
-
-  if (error) {
-    return { error: "We could not save that. Try again.", values };
-  }
-
-  revalidatePath("/dashboard");
-  return { saved: true, values };
-}
-
-/**
- * Deletes one of the signed-in landlord's listings, with its photos. Enquiries
- * and messages about it are deleted too (their foreign keys cascade).
- */
 export async function deleteListing(listingId: string): Promise<ListingState> {
   if (!UUID.test(listingId)) return { error: "We could not find that listing." };
 

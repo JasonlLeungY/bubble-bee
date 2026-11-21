@@ -9,6 +9,8 @@ export type ContactStatus =
   | { kind: "can-contact"; listingId: string }
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
+  | { kind: "gender" }
+  | { kind: "incomplete" }
   | { kind: "owner"; listingId: string; title: string }
   | { kind: "admin"; listingId: string }
   | { kind: "landlord" };
@@ -20,6 +22,7 @@ const disabledClass = `${baseClass} cursor-not-allowed bg-neutral-200 text-neutr
 
 const DISABLED_LABELS = {
   mismatch: "Not a Lifestyle Match",
+  gender: "Not open to your gender",
   landlord: "Tenant accounts only",
 } as const;
 
@@ -61,6 +64,13 @@ export default function ContactButton({
     return (
       <Link href={status.href} className={`${primaryClass} ${width}`}>
         Open conversation
+      </Link>
+    );
+  }
+  if (status.kind === "incomplete") {
+    return (
+      <Link href="/dashboard/profile" className={`${primaryClass} ${width}`}>
+        Complete your profile to contact
       </Link>
     );
   }

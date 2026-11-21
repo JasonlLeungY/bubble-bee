@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { createListing, updateListing, type ListingState } from "@/app/dashboard/actions";
 import ImageUploader from "@/components/ImageUploader";
+import { GENDER_PREFERENCES } from "@/utils/gender";
 import { LEASE_TERMS, PARKING_OPTIONS } from "@/utils/listing-form";
 
 /** The saved values of a listing, used to fill the form when editing. */
@@ -19,7 +20,7 @@ export type InitialListing = {
   is_smoker_allowed: boolean;
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
-  ladies_only: boolean;
+  gender_preference: string;
   lease_term: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -45,12 +46,6 @@ const RULES = [
     field: "toleratesNoise",
     title: "Tolerates late noise",
     hint: "Music or guests in the evening are okay.",
-  },
-  {
-    name: "ladies_only",
-    field: "ladiesOnly",
-    title: "Ladies only sharehouse",
-    hint: "Only women live in this house.",
   },
 ] as const;
 
@@ -329,6 +324,29 @@ export default function ListingForm({
               defaultValue={state.fields?.parkingOther ?? initial?.parking_other ?? ""}
             />
           </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className={labelClass}>Who is the house for?</legend>
+        <p className="mt-0.5 text-xs text-neutral-500">Tenants of another gender cannot contact this listing.</p>
+        <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {GENDER_PREFERENCES.map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-400 px-3.5 py-3 text-sm font-medium has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-900"
+            >
+              <input
+                type="radio"
+                name="gender_preference"
+                value={option.value}
+                className="h-4 w-4 accent-neutral-900"
+                defaultChecked={(state.fields?.genderPreference ?? initial?.gender_preference) === option.value}
+                required
+              />
+              {option.label}
+            </label>
+          ))}
         </div>
       </fieldset>
 
