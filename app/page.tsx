@@ -6,7 +6,7 @@ import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
 import { formatPrice, listingImages } from "@/utils/listings";
-import { SUBURB_PATTERN } from "@/utils/suburb-lookup";
+import { SUBURB_PATTERN, verifyAustralianSuburb } from "@/utils/suburb-lookup";
 import { viewerAccess, type ViewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -18,6 +18,8 @@ const PAGE_SIZE = 10;
 const LISTING_COLUMNS =
   "id, title, suburb, price_per_week, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise";
 const JOB_COLUMNS = "id, title, employer, suburb, pay, hours";
+const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
+const DEFAULT_RADIUS = 10;
 
 const CATEGORIES = [
   { key: "entire_home", label: "Entire home" },
@@ -25,8 +27,21 @@ const CATEGORIES = [
   { key: "jobs", label: "Jobs" },
 ] as const;
 type Category = (typeof CATEGORIES)[number]["key"];
+type HomeType = "entire_home" | "share_house";
 
-type SearchParams = Promise<{ category?: string | string[]; page?: string | string[]; suburb?: string | string[] }>;
+/** A search: the suburb the visitor typed, the radius, and the suburb's centre. */
+type Search = { suburb: string; km: number; lat: number; lng: number };
+
+type SearchParams = Promise<{
+  category?: string | string[];
+  page?: string | string[];
+  suburb?: string | string[];
+  radius?: string | string[];
+}>;
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default function HomePage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -34,7 +49,7 @@ export default function HomePage({ searchParams }: { searchParams: SearchParams 
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-[26px] leading-8 font-semibold tracking-tight">Homes and jobs</h1>
-        <p className="mt-1 text-sm text-neutral-500">Newest first. Pick a category to see more.</p>
+        <p className="mt-1 text-sm text-neutral-500">Newest first. Search a suburb to see what is nearby.</p>
 
         <div className="mt-8">
           <Suspense fallback={<GridSkeleton />}>
@@ -51,33 +66,70 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   void recordPageView("/");
   const params = await searchParams;
-  const requestedCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const requestedCategory = first(params.category);
   const category = CATEGORIES.find((option) => option.key === requestedCategory)?.key;
-  const requestedPage = Array.isArray(params.page) ? params.page[0] : params.page;
+  const requestedPage = first(params.page);
   const page = Math.max(1, Number.parseInt(requestedPage ?? "1", 10) || 1);
-  const requestedSuburb = (Array.isArray(params.suburb) ? params.suburb[0] : params.suburb)?.trim() ?? "";
-  const suburb = SUBURB_PATTERN.test(requestedSuburb) ? requestedSuburb : "";
+  const typed = (first(params.suburb) ?? "").trim();
+  const suburbText = SUBURB_PATTERN.test(typed) ? typed : "";
+  const radiusParam = Number.parseInt(first(params.radius) ?? "", 10);
+  const km = (RADIUS_OPTIONS as readonly number[]).includes(radiusParam) ? radiusParam : DEFAULT_RADIUS;
 
   const supabase = await createClient();
   const access = await viewerAccess(supabase);
   const { data: suburbRows } = await supabase.rpc("browse_suburbs");
   const suburbs = (suburbRows ?? []).map((row: { suburb: string }) => row.suburb);
 
+  // Find the centre of the searched suburb. If it is not in Australia, say so.
+  let search: Search | null = null;
+  let searchProblem: string | null = null;
+  if (suburbText) {
+    try {
+      const point = await verifyAustralianSuburb(suburbText);
+      if (point) {
+        search = { suburb: suburbText, km, lat: point.latitude, lng: point.longitude };
+      } else {
+        searchProblem = `We could not find "${suburbText}" in Australia. Check the suburb name.`;
+      }
+    } catch (error) {
+      console.error("Suburb search failed", error);
+      searchProblem = "We could not check that suburb just now. Try again in a moment.";
+    }
+  }
+
+  const picker = <SearchForm suburbs={suburbs} typed={suburbText} km={km} category={category ?? null} />;
+
+  if (searchProblem) {
+    return (
+      <>
+        {picker}
+        <p role="alert" className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-6 text-sm text-rose-800">
+          {searchProblem}
+        </p>
+      </>
+    );
+  }
+
   // The front page: the first 10 of each category, all on one page.
   if (!category) {
     return (
       <>
-        <SuburbPicker suburbs={suburbs} selected={suburb} category={null} />
-        <Tabs active="all" suburb={suburb} />
+        {picker}
+        <Tabs active="all" search={search} />
+        {search && (
+          <p className="mt-6 text-sm text-neutral-600">
+            Within {search.km} km of {search.suburb}.
+          </p>
+        )}
         <div className="mt-8 space-y-12">
-          <Section title="Entire home" href={hrefFor({ category: "entire_home", suburb })}>
-            <ListingSection supabase={supabase} homeType="entire_home" suburb={suburb} />
+          <Section title="Entire home" href={hrefFor({ category: "entire_home", search })}>
+            <ListingSection supabase={supabase} homeType="entire_home" search={search} />
           </Section>
-          <Section title="Share house" href={hrefFor({ category: "share_house", suburb })}>
-            <ListingSection supabase={supabase} homeType="share_house" suburb={suburb} />
+          <Section title="Share house" href={hrefFor({ category: "share_house", search })}>
+            <ListingSection supabase={supabase} homeType="share_house" search={search} />
           </Section>
-          <Section title="Jobs" href={hrefFor({ category: "jobs", suburb })}>
-            <JobSection supabase={supabase} suburb={suburb} />
+          <Section title="Jobs" href={hrefFor({ category: "jobs", search })}>
+            <JobSection supabase={supabase} search={search} />
           </Section>
         </div>
         {access !== "full" && <AccessNote access={access} noun="listing" />}
@@ -88,45 +140,79 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   // One category, with paging. Pages after the first need a finished profile.
   return (
     <>
-      <SuburbPicker suburbs={suburbs} selected={suburb} category={category} />
-      <Tabs active={category} suburb={suburb} />
+      {picker}
+      <Tabs active={category} search={search} />
+      {search && (
+        <p className="mt-6 text-sm text-neutral-600">
+          Within {search.km} km of {search.suburb}.
+        </p>
+      )}
       <div className="mt-8">
         {category === "jobs" ? (
-          <JobFeed page={page} access={access} supabase={supabase} suburb={suburb} />
+          <JobFeed page={page} access={access} supabase={supabase} search={search} />
         ) : (
-          <ListingFeed page={page} access={access} supabase={supabase} homeType={category} suburb={suburb} />
+          <ListingFeed page={page} access={access} supabase={supabase} homeType={category} search={search} />
         )}
       </div>
     </>
   );
 }
 
-/** A link to the front page or a category, keeping the chosen suburb. */
-function hrefFor({ category, page, suburb }: { category?: Category; page?: number; suburb: string }) {
+/** A link to the front page or a category, keeping the search. */
+function hrefFor({ category, page, search }: { category?: Category; page?: number; search: Search | null }) {
   const query = new URLSearchParams();
   if (category) query.set("category", category);
   if (page && page > 1) query.set("page", String(page));
-  if (suburb) query.set("suburb", suburb);
+  if (search) {
+    query.set("suburb", search.suburb);
+    query.set("radius", String(search.km));
+  }
   const text = query.toString();
   return text ? `/?${text}` : "/";
 }
 
-// Pick a suburb to see its homes and jobs. Works without JavaScript.
-function SuburbPicker({ suburbs, selected, category }: { suburbs: string[]; selected: string; category: Category | null }) {
+// Type a suburb and a distance. Works without JavaScript.
+function SearchForm({
+  suburbs,
+  typed,
+  km,
+  category,
+}: {
+  suburbs: string[];
+  typed: string;
+  km: number;
+  category: Category | null;
+}) {
   return (
     <form action="/" method="get" className="mt-6 flex flex-wrap items-end gap-3">
       {category && <input type="hidden" name="category" value={category} />}
       <label className="block text-sm font-semibold">
         Suburb
-        <select
+        <input
           name="suburb"
-          defaultValue={selected}
-          className="mt-1.5 block min-w-56 rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900"
-        >
-          <option value="">All suburbs</option>
+          list="suburb-options"
+          defaultValue={typed}
+          placeholder="For example Glebe"
+          maxLength={80}
+          autoComplete="off"
+          className="mt-1.5 block w-56 rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900"
+        />
+        <datalist id="suburb-options">
           {suburbs.map((name) => (
-            <option key={name} value={name}>
-              {name}
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      </label>
+      <label className="block text-sm font-semibold">
+        Within
+        <select
+          name="radius"
+          defaultValue={String(km)}
+          className="mt-1.5 block rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900"
+        >
+          {RADIUS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option} km
             </option>
           ))}
         </select>
@@ -135,24 +221,24 @@ function SuburbPicker({ suburbs, selected, category }: { suburbs: string[]; sele
         type="submit"
         className="hive cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
       >
-        Show suburb
+        Search
       </button>
-      {selected && (
-        <Link href={hrefFor({ category: category ?? undefined, suburb: "" })} className="py-2.5 text-sm font-semibold underline underline-offset-2">
-          Show all suburbs
+      {typed && (
+        <Link href={hrefFor({ category: category ?? undefined, search: null })} className="py-2.5 text-sm font-semibold underline underline-offset-2">
+          Clear search
         </Link>
       )}
     </form>
   );
 }
 
-function Tabs({ active, suburb }: { active: Category | "all"; suburb: string }) {
+function Tabs({ active, search }: { active: Category | "all"; search: Search | null }) {
   const tabs = [
-    { key: "all", label: "All", href: hrefFor({ suburb }) },
-    ...CATEGORIES.map((c) => ({ key: c.key, label: c.label, href: hrefFor({ category: c.key, suburb }) })),
+    { key: "all", label: "All", href: hrefFor({ search }) },
+    ...CATEGORIES.map((c) => ({ key: c.key, label: c.label, href: hrefFor({ category: c.key, search }) })),
   ];
   return (
-    <nav aria-label="Categories" className="flex flex-wrap gap-2">
+    <nav aria-label="Categories" className="mt-6 flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -197,6 +283,8 @@ type CardListing = {
   is_smoker_allowed: boolean;
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
+  /** Set only in a distance search. */
+  distance_km?: number;
 };
 
 type CardJob = {
@@ -206,6 +294,8 @@ type CardJob = {
   suburb: string;
   pay: string;
   hours: string | null;
+  /** Set only in a distance search. */
+  distance_km?: number;
 };
 
 function EmptyState({ message }: { message: string }) {
@@ -224,57 +314,65 @@ function LoadError() {
   );
 }
 
-// The first page of one home type: the newest 10, from the card view, or
-// the newest 10 in one suburb.
-async function firstPageListings(supabase: Supabase, homeType: "entire_home" | "share_house", suburb: string) {
-  if (suburb) {
-    return supabase.rpc("first_page_listings_in_suburb", { p_suburb: suburb, p_home_type: homeType });
+function emptyListingText(homeType: HomeType, search: Search | null) {
+  const what = homeType === "entire_home" ? "entire homes" : "share houses";
+  return search ? `No ${what} within ${search.km} km of ${search.suburb}.` : `No ${what} listed yet.`;
+}
+
+function emptyJobText(search: Search | null) {
+  return search ? `No jobs within ${search.km} km of ${search.suburb}.` : "No jobs posted yet.";
+}
+
+// Listings of one home type: the newest 10 (within the search, if there is one).
+async function ListingSection({ supabase, homeType, search }: { supabase: Supabase; homeType: HomeType; search: Search | null }) {
+  if (search) {
+    const { data, error } = await supabase.rpc("listings_near", {
+      p_lat: search.lat,
+      p_lng: search.lng,
+      p_km: search.km,
+      p_home_type: homeType,
+      p_offset: 0,
+      p_limit: PAGE_SIZE,
+    });
+    if (error || !data) return <LoadError />;
+    if (data.length === 0) return <EmptyState message={emptyListingText(homeType, search)} />;
+    return <ListingCards listings={data} />;
   }
-  return supabase
+
+  const { data, error } = await supabase
     .from("first_page_listings")
     .select(LISTING_COLUMNS)
     .eq("home_type", homeType)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(PAGE_SIZE);
+  if (error || !data) return <LoadError />;
+  if (data.length === 0) return <EmptyState message={emptyListingText(homeType, null)} />;
+  return <ListingCards listings={data} />;
 }
 
-async function firstPageJobs(supabase: Supabase, suburb: string) {
-  if (suburb) {
-    return supabase.rpc("first_page_jobs_in_suburb", { p_suburb: suburb });
+async function JobSection({ supabase, search }: { supabase: Supabase; search: Search | null }) {
+  if (search) {
+    const { data, error } = await supabase.rpc("jobs_near", {
+      p_lat: search.lat,
+      p_lng: search.lng,
+      p_km: search.km,
+      p_offset: 0,
+      p_limit: PAGE_SIZE,
+    });
+    if (error || !data) return <LoadError />;
+    if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
+    return <JobRows jobs={data} />;
   }
-  return supabase
+
+  const { data, error } = await supabase
     .from("first_page_jobs")
     .select(JOB_COLUMNS)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(PAGE_SIZE);
-}
-
-function emptyListingText(homeType: "entire_home" | "share_house", suburb: string) {
-  const what = homeType === "entire_home" ? "entire homes" : "share houses";
-  return suburb ? `No ${what} in ${suburb} yet.` : `No ${what} listed yet.`;
-}
-
-async function ListingSection({
-  supabase,
-  homeType,
-  suburb,
-}: {
-  supabase: Supabase;
-  homeType: "entire_home" | "share_house";
-  suburb: string;
-}) {
-  const { data, error } = await firstPageListings(supabase, homeType, suburb);
   if (error || !data) return <LoadError />;
-  if (data.length === 0) return <EmptyState message={emptyListingText(homeType, suburb)} />;
-  return <ListingCards listings={data} />;
-}
-
-async function JobSection({ supabase, suburb }: { supabase: Supabase; suburb: string }) {
-  const { data, error } = await firstPageJobs(supabase, suburb);
-  if (error || !data) return <LoadError />;
-  if (data.length === 0) return <EmptyState message={suburb ? `No jobs in ${suburb} yet.` : "No jobs posted yet."} />;
+  if (data.length === 0) return <EmptyState message={emptyJobText(null)} />;
   return <JobRows jobs={data} />;
 }
 
@@ -307,7 +405,12 @@ function ListingCards({ listings }: { listings: CardListing[] }) {
 
               <div className="mt-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="truncate font-semibold">{listing.suburb}</p>
+                  <p className="truncate font-semibold">
+                    {listing.suburb}
+                    {listing.distance_km !== undefined && (
+                      <span className="ml-2 text-sm font-normal text-neutral-500">{listing.distance_km} km away</span>
+                    )}
+                  </p>
                   <p className="shrink-0">
                     <span className="font-semibold">{formatPrice(listing.price_per_week)}</span>
                     <span className="text-neutral-500"> / week</span>
@@ -338,6 +441,7 @@ function JobRows({ jobs }: { jobs: CardJob[] }) {
               <span className="block truncate text-sm text-neutral-500">
                 {job.employer} · {job.suburb}
                 {job.hours ? ` · ${job.hours}` : ""}
+                {job.distance_km !== undefined ? ` · ${job.distance_km} km away` : ""}
               </span>
             </span>
             <span className="shrink-0 text-sm font-semibold">{job.pay}</span>
@@ -348,42 +452,59 @@ function JobRows({ jobs }: { jobs: CardJob[] }) {
   );
 }
 
-// One category, with paging: the newest rooms of a home type.
+// One category, with paging.
 async function ListingFeed({
   page,
   access,
   supabase,
   homeType,
-  suburb,
+  search,
 }: {
   page: number;
   access: ViewerAccess;
   supabase: Supabase;
-  homeType: "entire_home" | "share_house";
-  suburb: string;
+  homeType: HomeType;
+  search: Search | null;
 }) {
   if (page > 1 && access !== "full") {
     return <MoreRoomsPrompt access={access} noun="rooms" />;
   }
 
+  const from = (page - 1) * PAGE_SIZE;
   let listings: CardListing[] | null = null;
   let error = null;
   let hasNext = false;
 
-  if (page === 1 && access !== "full") {
-    // Guests and unfinished tenants: the first 10 only, from the public functions.
-    const result = await firstPageListings(supabase, homeType, suburb);
+  if (search) {
+    // The search function gives guests the first 10 only; others get one extra row to see if there is a next page.
+    const result = await supabase.rpc("listings_near", {
+      p_lat: search.lat,
+      p_lng: search.lng,
+      p_km: search.km,
+      p_home_type: homeType,
+      p_offset: from,
+      p_limit: PAGE_SIZE + 1,
+    });
+    error = result.error;
+    hasNext = (result.data?.length ?? 0) > PAGE_SIZE;
+    listings = (result.data ?? []).slice(0, PAGE_SIZE);
+  } else if (page === 1 && access !== "full") {
+    // Guests and unfinished tenants: the first 10 only, from the public view.
+    const result = await supabase
+      .from("first_page_listings")
+      .select(LISTING_COLUMNS)
+      .eq("home_type", homeType)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE);
     listings = result.data;
     error = result.error;
   } else {
     // Full access: one extra row tells us whether there is a next page.
-    const from = (page - 1) * PAGE_SIZE;
-    let query = supabase
+    const result = await supabase
       .from("listings")
       .select(LISTING_COLUMNS)
-      .eq("home_type", homeType);
-    if (suburb) query = query.ilike("suburb", suburb);
-    const result = await query
+      .eq("home_type", homeType)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(from, from + PAGE_SIZE);
@@ -393,46 +514,62 @@ async function ListingFeed({
   }
 
   if (error || !listings) return <LoadError />;
-  if (listings.length === 0) return <EmptyState message={emptyListingText(homeType, suburb)} />;
+  if (listings.length === 0) return <EmptyState message={emptyListingText(homeType, search)} />;
 
   return (
     <>
       <ListingCards listings={listings} />
-      <Pager category={homeType} page={page} hasNext={hasNext} suburb={suburb} />
+      <Pager category={homeType} page={page} hasNext={hasNext} search={search} />
       {access !== "full" && <AccessNote access={access} noun="listing" />}
     </>
   );
 }
 
-// One category, with paging: the newest jobs.
+// One category, with paging: the newest jobs (within the search, if there is one).
 async function JobFeed({
   page,
   access,
   supabase,
-  suburb,
+  search,
 }: {
   page: number;
   access: ViewerAccess;
   supabase: Supabase;
-  suburb: string;
+  search: Search | null;
 }) {
   if (page > 1 && access !== "full") {
     return <MoreRoomsPrompt access={access} noun="jobs" />;
   }
 
+  const from = (page - 1) * PAGE_SIZE;
   let jobs: CardJob[] | null = null;
   let error = null;
   let hasNext = false;
 
-  if (page === 1 && access !== "full") {
-    const result = await firstPageJobs(supabase, suburb);
+  if (search) {
+    const result = await supabase.rpc("jobs_near", {
+      p_lat: search.lat,
+      p_lng: search.lng,
+      p_km: search.km,
+      p_offset: from,
+      p_limit: PAGE_SIZE + 1,
+    });
+    error = result.error;
+    hasNext = (result.data?.length ?? 0) > PAGE_SIZE;
+    jobs = (result.data ?? []).slice(0, PAGE_SIZE);
+  } else if (page === 1 && access !== "full") {
+    const result = await supabase
+      .from("first_page_jobs")
+      .select(JOB_COLUMNS)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE);
     jobs = result.data;
     error = result.error;
   } else {
-    const from = (page - 1) * PAGE_SIZE;
-    let query = supabase.from("job_posts").select(JOB_COLUMNS);
-    if (suburb) query = query.ilike("suburb", suburb);
-    const result = await query
+    const result = await supabase
+      .from("job_posts")
+      .select(JOB_COLUMNS)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(from, from + PAGE_SIZE);
@@ -442,19 +579,19 @@ async function JobFeed({
   }
 
   if (error || !jobs) return <LoadError />;
-  if (jobs.length === 0) return <EmptyState message={suburb ? `No jobs in ${suburb} yet.` : "No jobs posted yet."} />;
+  if (jobs.length === 0) return <EmptyState message={emptyJobText(search)} />;
 
   return (
     <>
       <JobRows jobs={jobs} />
-      <Pager category="jobs" page={page} hasNext={hasNext} suburb={suburb} />
+      <Pager category="jobs" page={page} hasNext={hasNext} search={search} />
       {access !== "full" && <AccessNote access={access} noun="job" />}
     </>
   );
 }
 
-function Pager({ category, page, hasNext, suburb }: { category: Category; page: number; hasNext: boolean; suburb: string }) {
-  const pageHref = (target: number) => hrefFor({ category, page: target, suburb });
+function Pager({ category, page, hasNext, search }: { category: Category; page: number; hasNext: boolean; search: Search | null }) {
+  const pageHref = (target: number) => hrefFor({ category, page: target, search });
   return (
     <nav aria-label="Pages" className="mt-10 flex items-center justify-between gap-4 text-sm">
       {page > 1 ? (
