@@ -44,7 +44,7 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
   const { data: listing } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, available_from, bond_amount, bills_included, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, gender_preference, bedrooms, bathrooms, parking, parking_other",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, available_from, bond_amount, bills_included, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, gender_preference, home_type, bedrooms, bathrooms, parking, parking_other",
     )
     .eq("id", id)
     .maybeSingle();
@@ -72,6 +72,7 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
         is_shift_worker_friendly: listing.is_shift_worker_friendly,
         tolerates_noise: listing.tolerates_noise,
         gender_preference: listing.gender_preference,
+        home_type: listing.home_type,
         bedrooms: listing.bedrooms,
         bathrooms: listing.bathrooms,
         parking: listing.parking,

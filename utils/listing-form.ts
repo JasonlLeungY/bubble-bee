@@ -8,6 +8,12 @@ const MAX_BOND = 100_000;
 const MAX_ROOMS = 20;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Whole home for one household, or rooms in a share house. */
+export const HOME_TYPES = [
+  { value: "entire_home", label: "Entire home" },
+  { value: "share_house", label: "Share house" },
+] as const;
+
 /** Who the house is for. Enforced in the database and at contact time. */
 export const GENDER_PREFERENCE_VALUES = ["female_only", "male_only", "no_preference"] as const;
 
@@ -31,6 +37,7 @@ export type ListingFields = {
   isShiftWorkerFriendly: boolean;
   toleratesNoise: boolean;
   genderPreference: string;
+  homeType: string;
   bedrooms: string;
   bathrooms: string;
   parking: string;
@@ -50,6 +57,7 @@ export type ListingValues = {
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
   gender_preference: string;
+  home_type: string;
   bedrooms: number;
   bathrooms: number;
   parking: string;
@@ -85,6 +93,7 @@ export function readListingForm(
     isShiftWorkerFriendly: formData.get("is_shift_worker_friendly") === "on",
     toleratesNoise: formData.get("tolerates_noise") === "on",
     genderPreference: text("gender_preference"),
+    homeType: text("home_type"),
     bedrooms: text("bedrooms"),
     bathrooms: text("bathrooms"),
     parking: text("parking"),
@@ -115,6 +124,9 @@ export function readListingForm(
   const bathrooms = wholeNumber(fields.bathrooms, 1, MAX_ROOMS);
   if (bathrooms === null) return fail("Enter how many bathrooms the house has (1 to 20).");
 
+  if (!HOME_TYPES.some((type) => type.value === fields.homeType)) {
+    return fail("Choose whether this is an entire home or a share house.");
+  }
   if (!GENDER_PREFERENCE_VALUES.some((value) => value === fields.genderPreference)) {
     return fail("Choose who the house is for: female only, male only or no preference.");
   }
@@ -172,6 +184,7 @@ export function readListingForm(
       is_shift_worker_friendly: fields.isShiftWorkerFriendly,
       tolerates_noise: fields.toleratesNoise,
       gender_preference: fields.genderPreference,
+      home_type: fields.homeType,
       bedrooms,
       bathrooms,
       parking: fields.parking,

@@ -5,7 +5,7 @@ import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { createListing, updateListing, type ListingState } from "@/app/dashboard/actions";
 import ImageUploader from "@/components/ImageUploader";
 import { GENDER_PREFERENCES } from "@/utils/gender";
-import { PARKING_OPTIONS } from "@/utils/listing-form";
+import { HOME_TYPES, PARKING_OPTIONS } from "@/utils/listing-form";
 
 /** The saved values of a listing, used to fill the form when editing. */
 export type InitialListing = {
@@ -21,6 +21,7 @@ export type InitialListing = {
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
   gender_preference: string;
+  home_type: string;
   bedrooms: number | null;
   bathrooms: number | null;
   parking: string | null;
@@ -306,6 +307,28 @@ export default function ListingForm({
               defaultValue={state.fields?.parkingOther ?? initial?.parking_other ?? ""}
             />
           </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className={labelClass}>What is being rented?</legend>
+        <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {HOME_TYPES.map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-400 px-3.5 py-3 text-sm font-medium has-[:checked]:border-neutral-900 has-[:checked]:bg-neutral-100 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-900"
+            >
+              <input
+                type="radio"
+                name="home_type"
+                value={option.value}
+                className="h-4 w-4 accent-neutral-900"
+                defaultChecked={(state.fields?.homeType ?? initial?.home_type) === option.value}
+                required
+              />
+              {option.label}
+            </label>
+          ))}
         </div>
       </fieldset>
 

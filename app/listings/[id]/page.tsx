@@ -58,7 +58,7 @@ async function Listing({
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, gender_preference, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, gender_preference, home_type, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -77,6 +77,7 @@ async function Listing({
     ? listing.landlord[0]
     : listing.landlord;
   const hostName = hostRow?.first_name?.trim() || null;
+  const homeTypeText = listing.home_type === "entire_home" ? "Entire home" : "Share house";
   const housemateText =
     listing.gender_preference === "female_only"
       ? "Female only sharehouse"
@@ -211,6 +212,7 @@ async function Listing({
             </div>
           </dl>
           <p className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-800">{housemateText}</p>
+          <p className="mt-2 inline-block rounded-full bg-neutral-100 px-3 py-1 text-sm font-semibold text-neutral-800">{homeTypeText}</p>
 
           {(status.kind === "can-contact" || status.kind === "existing") && (
             <div className="mt-8 border-t border-neutral-200 pt-8 lg:hidden">

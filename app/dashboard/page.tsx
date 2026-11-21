@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import DeleteJobButton from "@/components/DeleteJobButton";
 import DeleteListingButton from "@/components/DeleteListingButton";
 import { signOut } from "@/app/login/actions";
 import AboutForm from "@/components/AboutForm";
@@ -63,6 +64,14 @@ async function Hub() {
         .order("created_at", { ascending: false })
     : { data: null };
 
+  const { data: jobs } = isLandlord
+    ? await supabase
+        .from("job_posts")
+        .select("id, title, employer, suburb, pay")
+        .eq("poster_id", userId)
+        .order("created_at", { ascending: false })
+    : { data: null };
+
   return (
     <>
       <header className="flex items-start justify-between gap-4">
@@ -91,6 +100,7 @@ async function Hub() {
       </header>
 
       {isLandlord ? (
+        <>
         <section className="mt-8">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold">Your listings</h2>
@@ -147,6 +157,38 @@ async function Hub() {
             </p>
           )}
         </section>
+
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Your job posts</h2>
+            <Link
+              href="/dashboard/jobs/new"
+              className="hive rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+            >
+              Post a job
+            </Link>
+          </div>
+          {jobs && jobs.length > 0 ? (
+            <ul className="mt-4 divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
+              {jobs.map((job) => (
+                <li key={job.id} className="flex items-center gap-3 p-4">
+                  <Link href={`/jobs/${job.id}`} className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{job.title}</p>
+                    <p className="truncate text-sm text-neutral-500">
+                      {job.employer} · {job.suburb} · {job.pay}
+                    </p>
+                  </Link>
+                  <DeleteJobButton jobId={job.id} title={job.title} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 rounded-2xl border border-dashed border-neutral-300 px-6 py-8 text-center text-sm text-neutral-500">
+              You have not posted any jobs.
+            </p>
+          )}
+        </section>
+        </>
       ) : (
         <>
         <section className="mt-8 rounded-2xl border border-neutral-200 p-5">
