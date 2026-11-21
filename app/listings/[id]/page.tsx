@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import SuburbMapButton from "@/components/SuburbMapButton";
+import { isAdminUser } from "@/utils/access";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { createClient } from "@/utils/supabase/server";
@@ -84,7 +85,7 @@ async function Listing({
     const [{ data: viewer }, { data: existing }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("role, is_admin, is_smoker, is_shift_worker, tolerates_noise")
+        .select("role, is_smoker, is_shift_worker, tolerates_noise")
         .eq("id", viewerId)
         .maybeSingle(),
       supabase
@@ -95,7 +96,10 @@ async function Listing({
         .maybeSingle(),
     ]);
 
-    if (viewer?.is_admin) {
+    // Checked on its own, so a missing admin column cannot make a tenant look
+    // like a landlord.
+    const admin = await isAdminUser(supabase, viewerId);
+    if (admin) {
       // Administrators can edit any listing, but cannot contact landlords as a tenant.
       status = { kind: "admin", listingId: listing.id };
     } else if (!viewer || viewer.role !== "tenant") {
