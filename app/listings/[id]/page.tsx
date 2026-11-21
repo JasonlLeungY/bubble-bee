@@ -53,7 +53,7 @@ async function Listing({
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
-      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, gender_preference, lease_term, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
+      "id, landlord_id, title, description, price_per_week, suburb, image_urls, is_smoker_allowed, is_shift_worker_friendly, tolerates_noise, latitude, longitude, available_from, bond_amount, bills_included, gender_preference, bedrooms, bathrooms, parking, parking_other, created_at, landlord:profiles(first_name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -67,7 +67,6 @@ async function Listing({
     ? availableOn.format(new Date(`${listing.available_from}T00:00:00Z`))
     : "Now";
   const bondText = listing.bond_amount === null ? "Not set" : formatPrice(listing.bond_amount);
-  const leaseLabels: Record<string, string> = { "1_month": "1 month", "3_months": "3 months", "6_months": "6 months", "12_months": "12 months", ongoing: "Ongoing" };
   const parkingText = listing.parking === "other" ? listing.parking_other || "Other" : listing.parking === "garage" ? "Garage" : listing.parking === "street" ? "Street" : "Not stated";
   const hostRow: { first_name?: string | null } | null | undefined = Array.isArray(listing.landlord)
     ? listing.landlord[0]
@@ -198,7 +197,7 @@ async function Listing({
               <dd className="font-semibold">{listing.bills_included ? "Included" : "Not included"}</dd>
             </div>
           </dl>
-          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
             <div className="rounded-xl border border-neutral-200 p-3">
               <dt className="text-neutral-500">Bedrooms</dt>
               <dd className="font-semibold">{listing.bedrooms ?? "Not stated"}</dd>
@@ -210,10 +209,6 @@ async function Listing({
             <div className="rounded-xl border border-neutral-200 p-3">
               <dt className="text-neutral-500">Parking</dt>
               <dd className="font-semibold">{parkingText}</dd>
-            </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <dt className="text-neutral-500">Available for</dt>
-              <dd className="font-semibold">{listing.lease_term ? leaseLabels[listing.lease_term] : "Not stated"}</dd>
             </div>
           </dl>
           <p className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-rose-800">{housemateText}</p>

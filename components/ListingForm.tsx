@@ -5,7 +5,7 @@ import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { createListing, updateListing, type ListingState } from "@/app/dashboard/actions";
 import ImageUploader from "@/components/ImageUploader";
 import { GENDER_PREFERENCES } from "@/utils/gender";
-import { LEASE_TERMS, PARKING_OPTIONS } from "@/utils/listing-form";
+import { PARKING_OPTIONS } from "@/utils/listing-form";
 
 /** The saved values of a listing, used to fill the form when editing. */
 export type InitialListing = {
@@ -21,7 +21,6 @@ export type InitialListing = {
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
   gender_preference: string;
-  lease_term: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
   parking: string | null;
@@ -276,23 +275,6 @@ export default function ListingForm({
               defaultValue={state.fields?.bathrooms ?? initial?.bathrooms ?? ""}
               required
             />
-          </div>
-          <div>
-            <label htmlFor="lease_term" className={labelClass}>Available for</label>
-            <select
-              id="lease_term"
-              name="lease_term"
-              className={inputClass}
-              defaultValue={state.fields?.leaseTerm ?? initial?.lease_term ?? ""}
-              required
-            >
-              <option value="" disabled>Choose a period</option>
-              {LEASE_TERMS.map((term) => (
-                <option key={term.value} value={term.value}>
-                  {term.label}
-                </option>
-              ))}
-            </select>
           </div>
           <div>
             <p className={labelClass}>Parking</p>

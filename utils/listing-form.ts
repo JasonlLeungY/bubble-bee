@@ -8,15 +8,6 @@ const MAX_BOND = 100_000;
 const MAX_ROOMS = 20;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** How long the room is available for. */
-export const LEASE_TERMS = [
-  { value: "1_month", label: "1 month" },
-  { value: "3_months", label: "3 months" },
-  { value: "6_months", label: "6 months" },
-  { value: "12_months", label: "12 months" },
-  { value: "ongoing", label: "Ongoing" },
-] as const;
-
 /** Who the house is for. Enforced in the database and at contact time. */
 export const GENDER_PREFERENCE_VALUES = ["female_only", "male_only", "no_preference"] as const;
 
@@ -40,7 +31,6 @@ export type ListingFields = {
   isShiftWorkerFriendly: boolean;
   toleratesNoise: boolean;
   genderPreference: string;
-  leaseTerm: string;
   bedrooms: string;
   bathrooms: string;
   parking: string;
@@ -60,7 +50,6 @@ export type ListingValues = {
   is_shift_worker_friendly: boolean;
   tolerates_noise: boolean;
   gender_preference: string;
-  lease_term: string;
   bedrooms: number;
   bathrooms: number;
   parking: string;
@@ -96,7 +85,6 @@ export function readListingForm(
     isShiftWorkerFriendly: formData.get("is_shift_worker_friendly") === "on",
     toleratesNoise: formData.get("tolerates_noise") === "on",
     genderPreference: text("gender_preference"),
-    leaseTerm: text("lease_term"),
     bedrooms: text("bedrooms"),
     bathrooms: text("bathrooms"),
     parking: text("parking"),
@@ -129,9 +117,6 @@ export function readListingForm(
 
   if (!GENDER_PREFERENCE_VALUES.some((value) => value === fields.genderPreference)) {
     return fail("Choose who the house is for: female only, male only or no preference.");
-  }
-  if (!LEASE_TERMS.some((term) => term.value === fields.leaseTerm)) {
-    return fail("Choose how long the room is available for.");
   }
   if (!PARKING_OPTIONS.some((option) => option.value === fields.parking)) {
     return fail("Choose the parking: street, garage or other.");
@@ -187,7 +172,6 @@ export function readListingForm(
       is_shift_worker_friendly: fields.isShiftWorkerFriendly,
       tolerates_noise: fields.toleratesNoise,
       gender_preference: fields.genderPreference,
-      lease_term: fields.leaseTerm,
       bedrooms,
       bathrooms,
       parking: fields.parking,
