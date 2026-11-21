@@ -355,14 +355,6 @@ async function Listing({
 // Desktop: a large photo with up to four beside it, and "+N more" over the
 // last of those. Phones swipe through every photo, and a grid of all photos
 // is shown below on desktop when there are more than five.
-const LEAD = "md:col-span-2 md:row-span-2";
-const GALLERY_SPANS: Record<number, string[]> = {
-  1: ["md:col-span-4 md:row-span-2"],
-  2: [LEAD, LEAD],
-  3: [LEAD, "md:col-span-2", "md:col-span-2"],
-  4: [LEAD, "md:col-span-2", "", ""],
-  5: [LEAD, "", "", "", ""],
-};
 
 function Gallery({ images, title }: { images: string[]; title: string }) {
   if (images.length === 0) {
@@ -382,9 +374,6 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
     );
   }
 
-  const hero = images.slice(0, 5);
-  const more = images.length - hero.length;
-  const spans = GALLERY_SPANS[hero.length];
   const single = images.length === 1;
 
   return (
@@ -410,10 +399,15 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
         ))}
       </ul>
 
-      {/* Desktop: the first five photos. */}
-      <ul className="hidden h-[440px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl md:grid">
-        {hero.map((url, index) => (
-          <li key={url} className={`relative overflow-hidden bg-neutral-100 ${spans[index]}`}>
+      {/* Desktop: every photo once. The first photo is the large one. */}
+      <ul className="hidden grid-cols-4 gap-2 rounded-2xl md:grid">
+        {images.map((url, index) => (
+          <li
+            key={url}
+            className={`relative aspect-[4/3] overflow-hidden bg-neutral-100 ${
+              index === 0 && images.length > 1 ? "col-span-2 row-span-2 aspect-auto" : ""
+            } ${single ? "col-span-4" : ""}`}
+          >
             <Image
               src={url}
               alt={`${title}, photo ${index + 1} of ${images.length}`}
@@ -422,37 +416,9 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
               loading={index === 0 ? "eager" : "lazy"}
               className="object-cover"
             />
-            {index === hero.length - 1 && more > 0 && (
-              <a
-                href="#all-photos"
-                className="absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-semibold text-white transition hover:bg-black/65 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white"
-              >
-                +{more} more
-              </a>
-            )}
           </li>
         ))}
       </ul>
-
-      {images.length > hero.length && (
-        <section id="all-photos" className="mt-8 hidden scroll-mt-24 md:block">
-          <h2 className="text-lg font-semibold">All {images.length} photos</h2>
-          <ul className="mt-3 grid grid-cols-3 gap-3">
-            {images.map((url, index) => (
-              <li key={url} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100">
-                <Image
-                  src={url}
-                  alt={`${title}, photo ${index + 1} of ${images.length}`}
-                  fill
-                  sizes="(min-width: 1152px) 360px, 33vw"
-                  loading="lazy"
-                  className="object-cover"
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </>
   );
 }
