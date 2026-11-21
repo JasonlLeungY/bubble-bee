@@ -59,7 +59,7 @@ async function Hub() {
   const { data: listings } = isLandlord
     ? await supabase
         .from("listings")
-        .select("id, title, suburb, price_per_week, image_urls")
+        .select("id, title, suburb, price_per_week, image_urls, home_type")
         .eq("landlord_id", userId)
         .order("created_at", { ascending: false })
     : { data: null };
@@ -112,50 +112,18 @@ async function Hub() {
             </Link>
           </div>
 
-          {listings && listings.length > 0 ? (
-            <ul className="mt-4 divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
-              {listings.map((listing) => (
-                <li key={listing.id} className="flex items-center gap-3 p-4">
-                  <Link
-                    href={`/listings/${listing.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
-                  >
-                    {listing.image_urls?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={listing.image_urls[0]}
-                        alt=""
-                        className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="h-16 w-16 shrink-0 rounded-xl bg-neutral-100" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{listing.title}</p>
-                      <p className="text-sm text-neutral-500">{listing.suburb}</p>
-                    </div>
-                    <p className="shrink-0 text-sm">
-                      <span className="font-semibold">{formatPrice(listing.price_per_week)}</span>
-                      <span className="text-neutral-500"> / week</span>
-                    </p>
-                  </Link>
-                  <Link
-                    href={`/listings/${listing.id}/edit`}
-                    aria-label={`Edit ${listing.title}`}
-                    className="hive shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
-                  >
-                    Edit
-                  </Link>
-                  <DeleteListingButton listingId={listing.id} title={listing.title} className="shrink-0" />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-4 rounded-2xl border border-dashed border-neutral-300 px-6 py-10 text-center text-sm text-neutral-500">
-              You have no listings yet. Create your first one to start
-              receiving enquiries.
-            </p>
-          )}
+          <div className="mt-6 space-y-8">
+            <ListingGroup
+              heading="Entire homes"
+              listings={(listings ?? []).filter((listing) => listing.home_type === "entire_home")}
+              emptyText="You have no entire homes yet."
+            />
+            <ListingGroup
+              heading="Share houses"
+              listings={(listings ?? []).filter((listing) => listing.home_type !== "entire_home")}
+              emptyText="You have no share houses yet. Create your first room listing to start receiving enquiries."
+            />
+          </div>
         </section>
 
         <section className="mt-8">
@@ -226,5 +194,72 @@ async function Hub() {
         </>
       )}
     </>
+  );
+}
+
+type DashboardListing = {
+  id: string;
+  title: string;
+  suburb: string;
+  price_per_week: number;
+  image_urls: string[] | null;
+  home_type: string;
+};
+
+// One group of the landlord's listings: entire homes, or share houses.
+function ListingGroup({
+  heading,
+  listings,
+  emptyText,
+}: {
+  heading: string;
+  listings: DashboardListing[];
+  emptyText: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-base font-semibold">
+        {heading} <span className="font-normal text-neutral-500">({listings.length})</span>
+      </h3>
+      {listings.length > 0 ? (
+        <ul className="mt-3 divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
+          {listings.map((listing) => (
+            <li key={listing.id} className="flex items-center gap-3 p-4">
+              <Link
+                href={`/listings/${listing.id}`}
+                className="flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              >
+                {listing.image_urls?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={listing.image_urls[0]} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <div className="h-16 w-16 shrink-0 rounded-xl bg-neutral-100" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{listing.title}</p>
+                  <p className="text-sm text-neutral-500">{listing.suburb}</p>
+                </div>
+                <p className="shrink-0 text-sm">
+                  <span className="font-semibold">{formatPrice(listing.price_per_week)}</span>
+                  <span className="text-neutral-500"> / week</span>
+                </p>
+              </Link>
+              <Link
+                href={`/listings/${listing.id}/edit`}
+                aria-label={`Edit ${listing.title}`}
+                className="hive shrink-0 rounded-lg border border-neutral-900 px-3.5 py-2 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              >
+                Edit
+              </Link>
+              <DeleteListingButton listingId={listing.id} title={listing.title} className="shrink-0" />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 rounded-2xl border border-dashed border-neutral-300 px-6 py-8 text-center text-sm text-neutral-500">
+          {emptyText}
+        </p>
+      )}
+    </div>
   );
 }
