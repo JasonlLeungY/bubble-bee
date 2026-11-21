@@ -11,7 +11,7 @@ import { genderFits } from "@/utils/gender";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { recordPageView } from "@/utils/analytics";
-import { tenantNeedsProfile } from "@/utils/tenant-gate";
+import { viewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 import MessageLandlord from "@/components/MessageLandlord";
 import ContactButton, { type ContactStatus } from "./contact-button";
@@ -51,8 +51,10 @@ async function Listing({
 
   await connection();
   const supabase = await createClient();
-  // Tenants see a listing only once their profile is finished.
-  if (await tenantNeedsProfile(supabase)) redirect("/dashboard/profile");
+  // Full details need an account: guests sign up, and tenants finish their profile first.
+  const access = await viewerAccess(supabase);
+  if (access === "guest") redirect("/signup");
+  if (access === "profile-incomplete") redirect("/dashboard/profile");
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
@@ -91,12 +93,8 @@ async function Listing({
   let status: ContactStatus;
   let conflicts: ReturnType<typeof lifestyleConflicts> = [];
 
-  if (!viewerId) {
-    status = {
-      kind: "guest",
-      loginHref: `/login?next=${encodeURIComponent(`/listings/${listing.id}`)}`,
-    };
-  } else if (viewerId === listing.landlord_id) {
+  if (!viewerId) redirect("/signup");
+  if (viewerId === listing.landlord_id) {
     status = { kind: "owner", listingId: listing.id, title: listing.title };
   } else {
     const [{ data: viewer }, { data: existing }, { data: tenantIntake }] = await Promise.all([
@@ -335,11 +333,6 @@ async function Listing({
                   Review your lifestyle answers
                 </Link>
               </div>
-            )}
-            {status.kind === "guest" && (
-              <p className="mt-3 text-center text-xs text-neutral-500">
-                You need a tenant account to message landlords.
-              </p>
             )}
           </div>
         </aside>

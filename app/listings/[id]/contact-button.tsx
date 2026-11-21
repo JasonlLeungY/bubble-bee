@@ -5,7 +5,6 @@ import DeleteListingButton from "@/components/DeleteListingButton";
 
 /** Worked out on the server for whoever is viewing the listing. */
 export type ContactStatus =
-  | { kind: "guest"; loginHref: string }
   | { kind: "can-contact"; listingId: string }
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
@@ -34,13 +33,6 @@ export default function ContactButton({
 }) {
   const width = fullWidth ? "w-full" : "";
 
-  if (status.kind === "guest") {
-    return (
-      <Link href={status.loginHref} className={`${primaryClass} ${width}`}>
-        Log in to Contact
-      </Link>
-    );
-  }
   // Only ever sent to the listing's own landlord (see the listing page).
   if (status.kind === "admin") {
     return (
