@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
 import { formatPrice, listingImages } from "@/utils/listings";
+import { tenantNeedsProfile } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
 const GRID_CLASS =
@@ -38,6 +40,8 @@ async function ListingGrid() {
   await connection();
   void recordPageView("/");
   const supabase = await createClient();
+  // Tenants see the rooms only once their profile is finished.
+  if (await tenantNeedsProfile(supabase)) redirect("/dashboard/profile");
   const { data: listings, error } = await supabase
     .from("listings")
     .select(

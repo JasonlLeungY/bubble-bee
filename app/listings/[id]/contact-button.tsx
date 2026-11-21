@@ -10,7 +10,6 @@ export type ContactStatus =
   | { kind: "existing"; href: string }
   | { kind: "mismatch" }
   | { kind: "gender" }
-  | { kind: "incomplete" }
   | { kind: "owner"; listingId: string; title: string }
   | { kind: "admin"; listingId: string }
   | { kind: "landlord" };
@@ -64,13 +63,6 @@ export default function ContactButton({
     return (
       <Link href={status.href} className={`${primaryClass} ${width}`}>
         Open conversation
-      </Link>
-    );
-  }
-  if (status.kind === "incomplete") {
-    return (
-      <Link href="/dashboard/profile" className={`${primaryClass} ${width}`}>
-        Complete your profile to contact
       </Link>
     );
   }

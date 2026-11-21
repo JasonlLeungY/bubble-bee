@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
@@ -11,6 +11,7 @@ import { genderFits } from "@/utils/gender";
 import { UUID, lifestyleConflicts } from "@/utils/lifestyle";
 import { formatPrice, listingImages } from "@/utils/listings";
 import { recordPageView } from "@/utils/analytics";
+import { tenantNeedsProfile } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 import MessageLandlord from "@/components/MessageLandlord";
 import ContactButton, { type ContactStatus } from "./contact-button";
@@ -50,6 +51,8 @@ async function Listing({
 
   await connection();
   const supabase = await createClient();
+  // Tenants see a listing only once their profile is finished.
+  if (await tenantNeedsProfile(supabase)) redirect("/dashboard/profile");
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
@@ -110,7 +113,7 @@ async function Listing({
         .maybeSingle(),
       supabase
         .from("tenant_profiles")
-        .select("gender, profile_completed_at")
+        .select("gender")
         .eq("tenant_id", viewerId)
         .maybeSingle(),
     ]);
@@ -125,9 +128,7 @@ async function Listing({
       status = { kind: "landlord" };
     } else if (existing) {
       status = { kind: "existing", href: `/messages?c=${existing.id}` };
-    } else if (!tenantIntake?.profile_completed_at) {
-      status = { kind: "incomplete" };
-    } else if (!genderFits(listing.gender_preference, tenantIntake.gender)) {
+    } else if (!genderFits(listing.gender_preference, tenantIntake?.gender)) {
       status = { kind: "gender" };
     } else {
       conflicts = lifestyleConflicts(viewer, listing);
