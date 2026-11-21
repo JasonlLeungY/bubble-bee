@@ -55,5 +55,6 @@ for (const [index, name] of names.entries()) {
   );
   console.log("on conflict (suburb_key) do nothing;");
   console.log(`update public.listings set suburb = suburb where lower(btrim(suburb)) = ${sqlText(key)};`);
+  console.log(`update public.job_posts set suburb = suburb where lower(btrim(suburb)) = ${sqlText(key)};`);
   console.log("");
 }
