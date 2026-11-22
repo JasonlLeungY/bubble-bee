@@ -6,7 +6,7 @@ import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
 import { formatPrice, listingImages } from "@/utils/listings";
-import { SUBURB_PATTERN, verifyAustralianSuburb } from "@/utils/suburb-lookup";
+import { SUBURB_PATTERN, knownSuburb, verifyAustralianSuburb } from "@/utils/suburb-lookup";
 import { viewerAccess, type ViewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -121,11 +121,17 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   let searchProblem: string | null = null;
   if (suburbText) {
     try {
-      const point = await verifyAustralianSuburb(suburbText);
+      // Guests search only suburbs that are already on the map. Anyone else
+      // may trigger a paid lookup for a new suburb.
+      const point =
+        access === "guest" ? await knownSuburb(suburbText) : await verifyAustralianSuburb(suburbText);
       if (point) {
         search = { suburb: suburbText, km, lat: point.latitude, lng: point.longitude };
       } else {
-        searchProblem = `We could not find "${suburbText}" in Australia. Check the suburb name.`;
+        searchProblem =
+          access === "guest"
+            ? `Create an account to search for "${suburbText}", or pick a suburb that is already listed.`
+            : `We could not find "${suburbText}" in Australia. Check the suburb name.`;
       }
     } catch (error) {
       console.error("Suburb search failed", error);

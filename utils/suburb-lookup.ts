@@ -25,6 +25,8 @@ const USER_AGENT = "sharehouse-marketplace/1.0 (suburb map lookup)";
 const PLACE_TYPES = ["suburb", "neighbourhood", "quarter", "locality", "village", "town", "city"];
 
 const memory = new Map<string, SuburbPoint>();
+const notFoundAt = new Map<string, number>();
+const DAY_MS = 24 * 60 * 60 * 1000;
 const inflight = new Map<string, Promise<SuburbPoint | null>>();
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -189,6 +191,8 @@ export async function verifyAustralianSuburb(name: string): Promise<SuburbPoint 
 
   const known = memory.get(key);
   if (known) return known;
+  const missing = notFoundAt.get(key);
+  if (missing !== undefined && Date.now() - missing < DAY_MS) return null;
 
   const pending =
     inflight.get(key) ??
@@ -197,6 +201,8 @@ export async function verifyAustralianSuburb(name: string): Promise<SuburbPoint 
       if (point) {
         memory.set(key, point);
         await remember(key, point);
+      } else {
+        notFoundAt.set(key, Date.now());
       }
       return point;
     })();
@@ -217,4 +223,18 @@ export async function suburbProblem(name: string): Promise<string | null> {
     console.error("Suburb check failed", error);
     return "We could not check the suburb just now. Try again in a moment.";
   }
+}
+
+/**
+ * A suburb that is already on the map. Never calls the geocoder, so anonymous
+ * visitors can use it without costing a paid lookup.
+ */
+export async function knownSuburb(name: string): Promise<SuburbPoint | null> {
+  const { data: row } = await publicClient()
+    .from("suburb_locations")
+    .select("suburb, state, latitude, longitude")
+    .eq("suburb_key", name.trim().toLowerCase())
+    .maybeSingle();
+  if (!row) return null;
+  return { suburb: row.suburb, state: row.state, latitude: row.latitude, longitude: row.longitude };
 }

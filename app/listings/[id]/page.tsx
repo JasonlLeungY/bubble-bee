@@ -119,7 +119,7 @@ async function Listing({
 
     // Checked on its own, so a missing admin column cannot make a tenant look
     // like a landlord.
-    const admin = await isAdminUser(supabase, viewerId);
+    const admin = await isAdminUser(supabase);
     if (admin) {
       // Administrators can edit any listing, but cannot contact landlords as a tenant.
       status = { kind: "admin", listingId: listing.id };

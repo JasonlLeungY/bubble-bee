@@ -51,7 +51,7 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
   if (!listing) notFound();
 
   // Only the owner and administrators may edit. Anyone else goes to the public page.
-  if (listing.landlord_id !== userId && !(await isAdminUser(supabase, userId))) {
+  if (listing.landlord_id !== userId && !(await isAdminUser(supabase))) {
     redirect(`/listings/${id}`);
   }
 

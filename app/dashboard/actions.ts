@@ -77,7 +77,7 @@ export async function updateListing(
   if (!current) return { error: "We could not find that listing." };
 
   const isOwner = current.landlord_id === userId;
-  if (!isOwner && !(await isAdminUser(supabase, userId))) {
+  if (!isOwner && !(await isAdminUser(supabase))) {
     return { error: "Only the listing owner or an administrator can edit this listing." };
   }
   // Photos may sit in the owner's folder; an administrator may also use their own.

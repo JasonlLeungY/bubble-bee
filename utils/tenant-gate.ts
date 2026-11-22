@@ -18,7 +18,7 @@ export async function viewerAccess(supabase: SupabaseClient): Promise<ViewerAcce
   const userId = auth?.claims?.sub;
   if (!userId) return "guest";
 
-  if (await isAdminUser(supabase, userId)) return "full";
+  if (await isAdminUser(supabase)) return "full";
 
   const { data: profile } = await supabase
     .from("profiles")
