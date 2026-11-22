@@ -19,7 +19,7 @@ import ContactButton, { type ContactStatus } from "./contact-button";
 const listedOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" });
 
 // Tenants see a few photos. Owners and administrators always see them all.
-const TENANT_PHOTO_LIMIT = 3;
+const TENANT_PHOTO_LIMIT = 4;
 const TENANT_PHOTO_STATUSES: ContactStatus["kind"][] = ["can-contact", "existing", "mismatch", "gender"];
 const availableOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeZone: "UTC" });
 

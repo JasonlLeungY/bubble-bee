@@ -53,7 +53,7 @@ export default function PhotoGallery({
             key={url}
             className={`relative overflow-hidden bg-neutral-100 ${
               index === 0 && shown.length > 1 ? "col-span-2 row-span-2" : "aspect-[4/3]"
-            } ${single ? "col-span-4" : ""}`}
+            } ${single ? "col-span-4" : ""} ${shown.length === 4 && index === 3 ? "col-span-2 aspect-[2/1]" : ""}`}
           >
             <button type="button" onClick={open} className="relative block h-full w-full focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-neutral-900">
               <Image
