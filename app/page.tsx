@@ -25,9 +25,9 @@ const DEFAULT_RADIUS = 10;
 const MAX_PRICE = 10000;
 
 const CATEGORIES = [
-  { key: "entire_home", label: "Entire home" },
-  { key: "share_house", label: "Share house" },
   { key: "jobs", label: "Jobs" },
+  { key: "share_house", label: "Share house" },
+  { key: "entire_home", label: "Entire home" },
 ] as const;
 type Category = (typeof CATEGORIES)[number]["key"];
 type HomeType = "entire_home" | "share_house";
@@ -192,14 +192,14 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
         <Tabs active="all" filters={filters} />
         {summary(filters)}
         <div className="mt-8 space-y-12">
-          <Section title="Entire home" href={hrefFor({ category: "entire_home", filters })}>
-            <ListingSection supabase={supabase} homeType="entire_home" filters={filters} />
+          <Section title="Jobs" href={hrefFor({ category: "jobs", filters })}>
+            <JobSection supabase={supabase} search={search} applyMode={await applyModeFor(supabase, access)} />
           </Section>
           <Section title="Share house" href={hrefFor({ category: "share_house", filters })}>
             <ListingSection supabase={supabase} homeType="share_house" filters={filters} />
           </Section>
-          <Section title="Jobs" href={hrefFor({ category: "jobs", filters })}>
-            <JobSection supabase={supabase} search={search} applyMode={await applyModeFor(supabase, access)} />
+          <Section title="Entire home" href={hrefFor({ category: "entire_home", filters })}>
+            <ListingSection supabase={supabase} homeType="entire_home" filters={filters} />
           </Section>
         </div>
         {access !== "full" && <AccessNote access={access} noun="listing" />}
