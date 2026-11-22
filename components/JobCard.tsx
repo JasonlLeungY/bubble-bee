@@ -77,16 +77,29 @@ export function ApplyControl({ jobId, mode }: { jobId: string; mode: ApplyMode }
   return <QuickApply jobId={jobId} />;
 }
 
+/**
+ * Quick Apply on the job page jumps to the message box, so the tenant can say
+ * hello straight after applying. Pages without that box do nothing here.
+ */
+function jumpToMessageBox() {
+  const section = document.getElementById("message-employer");
+  if (!section) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  section.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  section.querySelector("textarea")?.focus({ preventScroll: true });
+}
+
 function QuickApply({ jobId }: { jobId: string }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(
     (prev) => quickApply(jobId, prev),
     {},
   );
+
   if (state.applied) {
     return <span className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-800">Applied</span>;
   }
   return (
-    <form action={action} className="flex flex-col items-end gap-1">
+    <form action={action} onSubmit={jumpToMessageBox} className="flex flex-col items-end gap-1">
       <button
         type="submit"
         disabled={pending}
