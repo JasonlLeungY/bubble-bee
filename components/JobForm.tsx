@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
+import { useUnsavedChanges } from "./useUnsavedChanges";
 import { createJob, updateJob, type JobState } from "@/app/dashboard/jobs/actions";
 import type { JobFields } from "@/utils/job-form";
 
@@ -24,9 +25,11 @@ export default function JobForm({
     {},
   );
   const value = (name: keyof JobFields) => state.fields?.[name] ?? initial?.[name] ?? "";
+  const formRef = useRef<HTMLFormElement>(null);
+  useUnsavedChanges(formRef);
 
   return (
-    <form action={formAction} className="mt-6 space-y-6">
+    <form ref={formRef} action={formAction} className="mt-6 space-y-6">
       <label className="block">
         <span className={labelClass}>Job title</span>
         <input className={inputClass} name="title" maxLength={120} required defaultValue={value("title")} placeholder="Barista" />
