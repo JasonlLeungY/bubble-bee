@@ -125,11 +125,12 @@ export default function JobCard({
   const shifts = shiftLabels(job.shift_windows);
   const immediate = Boolean(job.immediate_start);
   return (
-    <article className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:border-neutral-400">
+    // Full height, so cards in one row line up, with the footer at the bottom.
+    <article className="flex h-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:border-neutral-400">
       <button
         type="button"
         onClick={() => onOpen(job)}
-        className="block w-full rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
+        className="block w-full flex-1 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-neutral-900"
       >
         {/* Row 1: pay and employment type */}
         <div className="flex items-start justify-between gap-3">
