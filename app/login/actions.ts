@@ -50,12 +50,17 @@ export async function signIn(
     };
   }
 
-  // Only ever follow a path on this site, never a full URL someone put in the
-  // query string.
+  // Only ever follow a path on this site. Parsing against a placeholder origin
+  // catches tricks like "/<tab>/evil.example", which browsers read as "//evil.example".
   const next = text(formData, "next");
-  const isSafePath =
-    next.startsWith("/") && !next.startsWith("//") && !next.includes("\\");
-  redirect(isSafePath ? next : "/dashboard");
+  let destination = "/dashboard";
+  if (next.startsWith("/")) {
+    const parsed = new URL(next, "https://placeholder.invalid");
+    if (parsed.origin === "https://placeholder.invalid") {
+      destination = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  }
+  redirect(destination);
 }
 
 export async function signUp(

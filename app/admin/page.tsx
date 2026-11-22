@@ -45,7 +45,7 @@ async function Gate() {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
-  if (!userId || !(await isAdminUser(supabase, userId))) notFound();
+  if (!userId || !(await isAdminUser(supabase))) notFound();
 
   return (
     <main className="min-h-screen flex-1 bg-white px-4 py-10 font-sans text-neutral-900">

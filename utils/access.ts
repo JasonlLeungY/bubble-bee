@@ -1,11 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** True when the user is an administrator (profiles.is_admin, set in the database). */
-export async function isAdminUser(supabase: SupabaseClient, userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.is_admin === true;
+/**
+ * True when the signed-in user is an administrator. The flag itself is not
+ * readable through the API, so the check runs in the database (public.is_admin).
+ */
+export async function isAdminUser(supabase: SupabaseClient): Promise<boolean> {
+  const { data } = await supabase.rpc("is_admin");
+  return data === true;
 }
