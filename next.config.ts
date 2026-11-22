@@ -16,10 +16,10 @@ const isLocalSupabase =
 // blocking it. Switch the header name to Content-Security-Policy once the logs are clean.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
-  `connect-src 'self' ${supabaseUrl ? `${supabaseUrl.origin} ${supabaseUrl.origin.replace(/^http/, "ws")}` : ""} https://maps.googleapis.com`,
+  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
+  `connect-src 'self' ${supabaseUrl ? `${supabaseUrl.origin} ${supabaseUrl.origin.replace(/^http/, "ws")}` : ""}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
