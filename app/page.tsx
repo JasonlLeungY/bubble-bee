@@ -387,7 +387,7 @@ function Tabs({ active, filters }: { active: Category | "all"; filters: Filters 
             key={tab.key}
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${
+            className={`inline-flex min-h-11 items-center rounded-full border px-5 text-base font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${
               isActive
                 ? "border-neutral-900 bg-neutral-900 text-white"
                 : "border-neutral-300 text-neutral-800 hover:border-neutral-900"
