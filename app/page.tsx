@@ -279,12 +279,13 @@ function SearchForm({
   category: Category | null;
   filtered: boolean;
 }) {
+  // Lighter border and smaller text. 16px on phones stops iOS zooming in on focus.
   const inputClass =
-    "mt-1.5 block rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900";
+    "mt-1 block rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 sm:text-sm";
   return (
     <form action="/" method="get" className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
       {category && <input type="hidden" name="category" value={category} />}
-      <label className="col-span-2 block text-sm font-semibold sm:col-auto">
+      <label className="col-span-2 block text-xs font-medium sm:col-auto">
         Suburb
         <input
           name="suburb"
@@ -301,7 +302,7 @@ function SearchForm({
           ))}
         </datalist>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className="block text-xs font-medium">
         Within
         <select name="radius" defaultValue={String(km)} className={`${inputClass} w-full sm:w-auto`}>
           {RADIUS_OPTIONS.map((option) => (
@@ -311,7 +312,7 @@ function SearchForm({
           ))}
         </select>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className="block text-xs font-medium">
         Min price a week
         <div className="relative">
           <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
@@ -328,7 +329,7 @@ function SearchForm({
         />
         </div>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className="block text-xs font-medium">
         Max price a week
         <div className="relative">
           <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
@@ -345,7 +346,7 @@ function SearchForm({
         />
         </div>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className="block text-xs font-medium">
         Sort by
         <select name="sort" defaultValue={sort} className={`${inputClass} w-full sm:w-auto`}>
           {SORTS.map((option) => (
@@ -357,7 +358,7 @@ function SearchForm({
       </label>
       <button
         type="submit"
-        className="hive col-span-2 min-h-11 cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:col-auto"
+        className="hive col-span-2 min-h-11 cursor-pointer rounded-md border border-yellow-500 bg-yellow-500 px-4 text-sm font-semibold transition hover:bg-yellow-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:col-auto"
       >
         Search
       </button>
