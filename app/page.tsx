@@ -73,14 +73,13 @@ export default function HomePage({ searchParams }: { searchParams: SearchParams 
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-white font-sans text-neutral-900">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-[26px] leading-8 font-semibold tracking-tight">Homes and jobs</h1>
-        <p className="mt-1 text-sm text-neutral-500">Search a suburb, set a price range, and sort the results.</p>
-        <div className="mt-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <h1 className="text-xl leading-7 font-semibold tracking-tight">Homes and jobs</h1>
+        <div className="mt-4">
           <ModeSwitcher active="rooms" />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <Suspense fallback={<GridSkeleton />}>
             <Feed searchParams={searchParams} />
           </Suspense>
@@ -193,7 +192,7 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
         {notices}
         <Tabs active="all" filters={filters} />
         {summary(filters)}
-        <div className="mt-8 space-y-12">
+        <div className="mt-6 space-y-10">
           <Section title="Jobs" href={hrefFor({ category: "jobs", filters })}>
             <JobSection supabase={supabase} search={search} applyMode={await applyModeFor(supabase, access)} />
           </Section>
@@ -279,12 +278,14 @@ function SearchForm({
   category: Category | null;
   filtered: boolean;
 }) {
+  // 16px on phones stops iOS zooming in on focus; smaller from the small breakpoint up.
   const inputClass =
-    "mt-1.5 block rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900";
+    "mt-1 block rounded-lg border border-neutral-400 bg-white px-3 py-2 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 sm:text-sm";
+  const labelClass = "block text-xs font-semibold text-neutral-600";
   return (
-    <form action="/" method="get" className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+    <form action="/" method="get" className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 rounded-xl border border-neutral-200 p-3 sm:flex sm:flex-wrap sm:items-end">
       {category && <input type="hidden" name="category" value={category} />}
-      <label className="col-span-2 block text-sm font-semibold sm:col-auto">
+      <label className={`col-span-2 sm:col-auto ${labelClass}`}>
         Suburb
         <input
           name="suburb"
@@ -293,7 +294,7 @@ function SearchForm({
           placeholder="For example Glebe"
           maxLength={80}
           autoComplete="off"
-          className={`${inputClass} w-full sm:w-56`}
+          className={`${inputClass} w-full sm:w-52`}
         />
         <datalist id="suburb-options">
           {suburbs.map((name) => (
@@ -301,7 +302,7 @@ function SearchForm({
           ))}
         </datalist>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className={labelClass}>
         Within
         <select name="radius" defaultValue={String(km)} className={`${inputClass} w-full sm:w-auto`}>
           {RADIUS_OPTIONS.map((option) => (
@@ -311,10 +312,10 @@ function SearchForm({
           ))}
         </select>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className={labelClass}>
         Min price a week
         <div className="relative">
-          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
+          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-neutral-500">$</span>
         <input
           name="min"
           type="number"
@@ -324,14 +325,14 @@ function SearchForm({
           step={10}
           placeholder="0"
           defaultValue={min ?? ""}
-          className={`${inputClass} w-full pl-8 sm:w-32`}
+          className={`${inputClass} w-full pl-7 sm:w-28`}
         />
         </div>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className={labelClass}>
         Max price a week
         <div className="relative">
-          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
+          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-neutral-500">$</span>
         <input
           name="max"
           type="number"
@@ -341,11 +342,11 @@ function SearchForm({
           step={10}
           placeholder="No limit"
           defaultValue={max ?? ""}
-          className={`${inputClass} w-full pl-8 sm:w-32`}
+          className={`${inputClass} w-full pl-7 sm:w-28`}
         />
         </div>
       </label>
-      <label className="block text-sm font-semibold">
+      <label className={labelClass}>
         Sort by
         <select name="sort" defaultValue={sort} className={`${inputClass} w-full sm:w-auto`}>
           {SORTS.map((option) => (
@@ -357,14 +358,14 @@ function SearchForm({
       </label>
       <button
         type="submit"
-        className="hive col-span-2 min-h-11 cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:col-auto"
+        className="hive col-span-2 min-h-11 cursor-pointer rounded-lg border border-neutral-900 px-5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:col-auto"
       >
         Search
       </button>
       {filtered && (
         <Link
           href={hrefFor({ category: category ?? undefined, filters: NO_FILTERS })}
-          className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2"
+          className="inline-flex min-h-11 items-center justify-center text-sm font-semibold underline underline-offset-2 sm:col-auto"
         >
           Clear
         </Link>
@@ -379,7 +380,7 @@ function Tabs({ active, filters }: { active: Category | "all"; filters: Filters 
     ...CATEGORIES.map((c) => ({ key: c.key, label: c.label, href: hrefFor({ category: c.key, filters }) })),
   ];
   return (
-    <nav aria-label="Categories" className="mt-6 flex flex-wrap gap-2">
+    <nav aria-label="Categories" className="mt-4 flex flex-wrap gap-1.5">
       {tabs.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -387,7 +388,7 @@ function Tabs({ active, filters }: { active: Category | "all"; filters: Filters 
             key={tab.key}
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${
+            className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 ${
               isActive
                 ? "border-neutral-900 bg-neutral-900 text-white"
                 : "border-neutral-300 text-neutral-800 hover:border-neutral-900"
