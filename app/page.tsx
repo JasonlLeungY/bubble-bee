@@ -405,7 +405,7 @@ function Section({ title, href, children }: { title: string; href: string; child
   return (
     <section>
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-2xl leading-8 font-semibold tracking-tight sm:text-3xl sm:leading-9">{title}</h2>
         <Link href={href} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
           See all
         </Link>
