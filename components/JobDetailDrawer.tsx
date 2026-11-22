@@ -62,9 +62,14 @@ export default function JobDetailDrawer({
 
           <div className="flex-1 space-y-7 overflow-y-auto px-5 py-6">
             <JobDetailContent job={job} />
-            <Link href={`/jobs/${job.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
-              Open the full job page
-            </Link>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <Link href={`/jobs/${job.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+                Open the full job page
+              </Link>
+              <Link href={`/jobs/${job.id}#message-employer`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+                Message the employer
+              </Link>
+            </div>
           </div>
         </div>
       )}

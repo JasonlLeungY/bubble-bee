@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ApplyControl, type JobCardData } from "@/components/JobCard";
 import { employmentLabel, payLine } from "@/utils/job-display";
 import JobDetailContent from "@/components/JobDetailContent";
+import MessageEmployer from "@/components/MessageEmployer";
 import SiteHeader from "@/components/SiteHeader";
 import { UUID } from "@/utils/lifestyle";
 import { applyModeFor } from "@/utils/job-search";
@@ -78,6 +79,15 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
   const applyMode = await applyModeFor(supabase, access);
   const { data: applied } = await supabase.from("job_applications").select("id").eq("job_id", id).maybeSingle();
 
+  // The employer cannot message their own job. A tenant has at most one
+  // conversation about this job, so look for theirs.
+  const { data: auth } = await supabase.auth.getClaims();
+  const userId = auth?.claims?.sub;
+  const canMessage = userId !== undefined && userId !== row.poster_id;
+  const { data: conversation } = canMessage
+    ? await supabase.from("conversations").select("id").eq("job_id", id).eq("tenant_id", userId).maybeSingle()
+    : { data: null };
+
   return (
     <>
       <title>{`${job.title} at ${job.employer}`}</title>
@@ -101,6 +111,11 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
       <div className="mt-8">
         <JobDetailContent job={job} />
       </div>
+      {canMessage && (
+        <section id="message-employer" className="mt-10 scroll-mt-24 border-t border-neutral-200 pt-8">
+          <MessageEmployer jobId={job.id} conversationHref={conversation ? `/messages?c=${conversation.id}` : undefined} />
+        </section>
+      )}
     </>
   );
 }

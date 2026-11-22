@@ -16,11 +16,14 @@ type Person = { first_name: string | null; last_name: string | null } | null;
 
 type Conversation = {
   id: string;
-  listing_id: string;
+  // A conversation is about either a listing or a job.
+  listing_id: string | null;
+  job_id: string | null;
   tenant_id: string;
   landlord_id: string;
   last_message_at: string;
   listing: { title: string; suburb: string } | null;
+  job: { title: string; suburb: string } | null;
   tenant: Person;
   landlord: Person;
   // The single most recent message, for the preview line.
@@ -82,8 +85,9 @@ async function Inbox({
   const { data, error } = await supabase
     .from("conversations")
     .select(
-      `id, listing_id, tenant_id, landlord_id, last_message_at,
+      `id, listing_id, job_id, tenant_id, landlord_id, last_message_at,
        listing:listings(title, suburb),
+       job:job_posts(title, suburb),
        tenant:profiles!conversations_tenant_id_fkey(first_name, last_name),
        landlord:profiles!conversations_landlord_id_fkey(first_name, last_name),
        messages(content, sender_id)`,
@@ -111,7 +115,7 @@ async function Inbox({
       <div className="rounded-2xl border border-dashed border-neutral-300 px-6 py-16 text-center">
         <p className="font-semibold">No conversations yet</p>
         <p className="mt-1 text-sm text-neutral-500">
-          Conversations start when a tenant contacts a landlord from a listing.
+          Conversations start when a tenant contacts a landlord from a listing, or an employer from a job.
         </p>
         <Link
           href="/"
@@ -143,8 +147,10 @@ async function Inbox({
 
   // Landlords see the tenant's profile once they have a conversation together.
   // The database allows it only then, and phone and date of birth are never read.
+  // Employers do not get the card for a job conversation: they see the name and
+  // the intro the tenant wrote.
   let tenantCard: { profile: TenantCardProfile; selfieUrl: string | null } | null = null;
-  if (selected && selected.landlord_id === userId) {
+  if (selected && selected.listing_id && selected.landlord_id === userId) {
     const { data: row } = await supabase
       .from("tenant_profiles")
       .select(TENANT_CARD_COLUMNS)
@@ -161,8 +167,18 @@ async function Inbox({
 
   const otherParty = (conversation: Conversation) =>
     conversation.tenant_id === userId
-      ? { name: displayName(conversation.landlord), role: "Landlord" }
+      ? { name: displayName(conversation.landlord), role: conversation.job_id ? "Employer" : "Landlord" }
       : { name: displayName(conversation.tenant), role: "Tenant" };
+
+  const subjectLabel = (conversation: Conversation) =>
+    conversation.job
+      ? conversation.job.title
+      : conversation.listing
+        ? conversation.listing.title
+        : "Listing removed";
+
+  const subjectHref = (conversation: Conversation) =>
+    conversation.job_id ? `/jobs/${conversation.job_id}` : `/listings/${conversation.listing_id}`;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-neutral-200 md:grid-cols-[300px_minmax(0,1fr)]">
@@ -200,7 +216,7 @@ async function Inbox({
                     </span>
                   </div>
                   <p className="truncate text-sm text-neutral-600">
-                    {conversation.listing?.title ?? "Listing removed"}
+                    {subjectLabel(conversation)}
                   </p>
                   <p className="mt-0.5 truncate text-sm text-neutral-500">
                     {last
@@ -235,12 +251,16 @@ async function Inbox({
                 </span>
               </p>
               <Link
-                href={`/listings/${selected.listing_id}`}
+                href={subjectHref(selected)}
                 className="block truncate text-sm text-neutral-600 underline underline-offset-2"
               >
-                {selected.listing
-                  ? `${selected.listing.title}, ${selected.listing.suburb}`
-                  : "View listing"}
+                {selected.job
+                  ? `${selected.job.title}, ${selected.job.suburb}`
+                  : selected.listing
+                    ? `${selected.listing.title}, ${selected.listing.suburb}`
+                    : selected.job_id
+                      ? "View job"
+                      : "View listing"}
               </Link>
               {tenantCard && (
                 <TenantCard
