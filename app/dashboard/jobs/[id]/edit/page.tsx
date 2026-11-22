@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import JobForm from "@/components/JobForm";
+import { jobToFields } from "@/utils/job-form";
 import { UUID } from "@/utils/lifestyle";
 import { createClient } from "@/utils/supabase/server";
 
@@ -33,7 +34,7 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
 
   const { data: job } = await supabase
     .from("job_posts")
-    .select("id, poster_id, title, employer, suburb, pay, hours, description")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
   if (!job || job.poster_id !== userId) notFound();
@@ -42,18 +43,7 @@ async function Editor({ params }: { params: Promise<{ id: string }> }) {
     <>
       <h1 className="text-[26px] leading-8 font-semibold tracking-tight">Edit job</h1>
       <p className="mt-1 text-sm text-neutral-500">Changes show on the Jobs tab straight away.</p>
-      <JobForm
-        mode="edit"
-        jobId={job.id}
-        initial={{
-          title: job.title,
-          employer: job.employer,
-          suburb: job.suburb,
-          pay: job.pay,
-          hours: job.hours ?? "",
-          description: job.description ?? "",
-        }}
-      />
+      <JobForm mode="edit" jobId={job.id} initial={jobToFields(job)} />
     </>
   );
 }

@@ -2,6 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import JobBoard from "@/components/JobBoard";
+import ModeSwitcher from "@/components/ModeSwitcher";
+import type { ApplyMode, JobCardData } from "@/components/JobCard";
+import { applyModeFor } from "@/utils/job-search";
 import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
@@ -15,7 +20,6 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 const GRID_CLASS =
   "grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
 const PAGE_SIZE = 10;
-const JOB_COLUMNS = "id, title, employer, suburb, pay, hours";
 const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
 const DEFAULT_RADIUS = 10;
 const MAX_PRICE = 10000;
@@ -70,6 +74,9 @@ export default function HomePage({ searchParams }: { searchParams: SearchParams 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-[26px] leading-8 font-semibold tracking-tight">Homes and jobs</h1>
         <p className="mt-1 text-sm text-neutral-500">Search a suburb, set a price range, and sort the results.</p>
+        <div className="mt-6">
+          <ModeSwitcher active="rooms" />
+        </div>
 
         <div className="mt-8">
           <Suspense fallback={<GridSkeleton />}>
@@ -192,13 +199,16 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
             <ListingSection supabase={supabase} homeType="share_house" filters={filters} />
           </Section>
           <Section title="Jobs" href={hrefFor({ category: "jobs", filters })}>
-            <JobSection supabase={supabase} search={search} />
+            <JobSection supabase={supabase} search={search} applyMode={await applyModeFor(supabase, access)} />
           </Section>
         </div>
         {access !== "full" && <AccessNote access={access} noun="listing" />}
       </>
     );
   }
+
+  // Local jobs have their own page now.
+  if (category === "jobs") redirect("/jobs");
 
   // One category, with paging. Pages after the first need a finished profile.
   return (
@@ -208,11 +218,7 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
       <Tabs active={category} filters={filters} />
       {summary(filters)}
       <div className="mt-8">
-        {category === "jobs" ? (
-          <JobFeed page={page} access={access} supabase={supabase} search={search} filters={filters} />
-        ) : (
-          <ListingFeed page={page} access={access} supabase={supabase} homeType={category} filters={filters} />
-        )}
+        <ListingFeed page={page} access={access} supabase={supabase} homeType={category} filters={filters} />
       </div>
     </>
   );
@@ -420,16 +426,6 @@ type CardListing = {
   distance_km?: number | null;
 };
 
-type CardJob = {
-  id: string;
-  title: string;
-  employer: string;
-  suburb: string;
-  pay: string;
-  hours: string | null;
-  /** Set only in a distance search. */
-  distance_km?: number;
-};
 
 function EmptyState({ message }: { message: string }) {
   return (
@@ -486,29 +482,30 @@ async function ListingSection({ supabase, homeType, filters }: { supabase: Supab
   return <ListingCards listings={data} />;
 }
 
-async function JobSection({ supabase, search }: { supabase: Supabase; search: Search | null }) {
-  if (search) {
-    const { data, error } = await supabase.rpc("jobs_near", {
-      p_lat: search.lat,
-      p_lng: search.lng,
-      p_km: search.km,
-      p_offset: 0,
-      p_limit: PAGE_SIZE,
-    });
-    if (error || !data) return <LoadError />;
-    if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
-    return <JobRows jobs={data} />;
-  }
-
-  const { data, error } = await supabase
-    .from("first_page_jobs")
-    .select(JOB_COLUMNS)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(PAGE_SIZE);
+async function JobSection({
+  supabase,
+  search,
+  applyMode,
+}: {
+  supabase: Supabase;
+  search: Search | null;
+  applyMode: ApplyMode;
+}) {
+  const { data, error } = await supabase.rpc("find_jobs", {
+    p_lat: search?.lat ?? null,
+    p_lng: search?.lng ?? null,
+    p_km: search?.km ?? null,
+    p_types: null,
+    p_min_rate: null,
+    p_immediate: false,
+    p_shifts: null,
+    p_bundle: false,
+    p_offset: 0,
+    p_limit: PAGE_SIZE,
+  });
   if (error || !data) return <LoadError />;
-  if (data.length === 0) return <EmptyState message={emptyJobText(null)} />;
-  return <JobRows jobs={data} />;
+  if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
+  return <JobBoard jobs={data as JobCardData[]} mode={applyMode} />;
 }
 
 function ListingCards({ listings }: { listings: CardListing[] }) {
@@ -562,30 +559,6 @@ function ListingCards({ listings }: { listings: CardListing[] }) {
   );
 }
 
-function JobRows({ jobs }: { jobs: CardJob[] }) {
-  return (
-    <ul className="divide-y divide-neutral-200 rounded-2xl border border-neutral-200">
-      {jobs.map((job) => (
-        <li key={job.id}>
-          <Link
-            href={`/jobs/${job.id}`}
-            className="flex flex-col gap-1 px-5 py-4 transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-neutral-900 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-semibold">{job.title}</span>
-              <span className="block truncate text-sm text-neutral-500">
-                {job.employer} · {job.suburb}
-                {job.hours ? ` · ${job.hours}` : ""}
-                {job.distance_km !== undefined ? ` · ${job.distance_km} km away` : ""}
-              </span>
-            </span>
-            <span className="shrink-0 text-sm font-semibold">{job.pay}</span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 // One category, with paging.
 async function ListingFeed({
@@ -628,71 +601,6 @@ async function ListingFeed({
 }
 
 // One category, with paging: the newest jobs (within the search, if there is one).
-async function JobFeed({
-  page,
-  access,
-  supabase,
-  search,
-  filters,
-}: {
-  page: number;
-  access: ViewerAccess;
-  supabase: Supabase;
-  search: Search | null;
-  filters: Filters;
-}) {
-  if (page > 1 && access !== "full") {
-    return <MoreRoomsPrompt access={access} noun="jobs" />;
-  }
-
-  const from = (page - 1) * PAGE_SIZE;
-  let jobs: CardJob[] | null = null;
-  let error = null;
-  let hasNext = false;
-
-  if (search) {
-    const result = await supabase.rpc("jobs_near", {
-      p_lat: search.lat,
-      p_lng: search.lng,
-      p_km: search.km,
-      p_offset: from,
-      p_limit: PAGE_SIZE + 1,
-    });
-    error = result.error;
-    hasNext = (result.data?.length ?? 0) > PAGE_SIZE;
-    jobs = (result.data ?? []).slice(0, PAGE_SIZE);
-  } else if (page === 1 && access !== "full") {
-    const result = await supabase
-      .from("first_page_jobs")
-      .select(JOB_COLUMNS)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(PAGE_SIZE);
-    jobs = result.data;
-    error = result.error;
-  } else {
-    const result = await supabase
-      .from("job_posts")
-      .select(JOB_COLUMNS)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, from + PAGE_SIZE);
-    error = result.error;
-    hasNext = (result.data?.length ?? 0) > PAGE_SIZE;
-    jobs = (result.data ?? []).slice(0, PAGE_SIZE);
-  }
-
-  if (error || !jobs) return <LoadError />;
-  if (jobs.length === 0) return <EmptyState message={emptyJobText(search)} />;
-
-  return (
-    <>
-      <JobRows jobs={jobs} />
-      <Pager category="jobs" page={page} hasNext={hasNext} filters={filters} />
-      {access !== "full" && <AccessNote access={access} noun="job" />}
-    </>
-  );
-}
 
 function Pager({ category, page, hasNext, filters }: { category: Category; page: number; hasNext: boolean; filters: Filters }) {
   const pageHref = (target: number) => hrefFor({ category, page: target, filters });
