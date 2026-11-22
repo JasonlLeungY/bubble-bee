@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LIFESTYLE_RULES, LifestyleIcon } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
+import PhotoGallery from "@/components/PhotoGallery";
 import SuburbMapButton from "@/components/SuburbMapButton";
 import { isAdminUser } from "@/utils/access";
 import { genderFits } from "@/utils/gender";
@@ -153,8 +153,8 @@ async function Listing({
         </p>
       )}
       <Gallery
-        images={TENANT_PHOTO_STATUSES.includes(status.kind) ? images.slice(0, TENANT_PHOTO_LIMIT) : images}
-        totalImages={images.length}
+        shown={TENANT_PHOTO_STATUSES.includes(status.kind) ? images.slice(0, TENANT_PHOTO_LIMIT) : images}
+        all={images}
         title={listing.title}
       />
 
@@ -364,8 +364,8 @@ async function Listing({
 // last of those. Phones swipe through every photo, and a grid of all photos
 // is shown below on desktop when there are more than five.
 
-function Gallery({ images, totalImages, title }: { images: string[]; totalImages: number; title: string }) {
-  if (images.length === 0) {
+function Gallery({ shown, all, title }: { shown: string[]; all: string[]; title: string }) {
+  if (all.length === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-100 text-neutral-400 md:h-72">
         <svg
@@ -381,61 +381,7 @@ function Gallery({ images, totalImages, title }: { images: string[]; totalImages
       </div>
     );
   }
-
-  const single = images.length === 1;
-  const hidden = totalImages - images.length;
-
-  return (
-    <>
-      {/* Phones: swipe through every photo. */}
-      <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto rounded-2xl [scrollbar-width:none] md:hidden">
-        {images.map((url, index) => (
-          <li
-            key={url}
-            className={`relative aspect-[4/3] shrink-0 snap-center overflow-hidden bg-neutral-100 ${
-              single ? "w-full" : "w-[88%]"
-            }`}
-          >
-            <Image
-              src={url}
-              alt={`${title}, photo ${index + 1} of ${totalImages}`}
-              fill
-              sizes="88vw"
-              loading={index === 0 ? "eager" : "lazy"}
-              className="object-cover"
-            />
-          </li>
-        ))}
-      </ul>
-
-      {hidden > 0 && (
-        <p className="mt-3 text-sm text-neutral-600">
-          Showing {images.length} of {totalImages} photos.
-        </p>
-      )}
-
-      {/* Desktop: every photo once. The first photo is the large one. */}
-      <ul className="hidden grid-cols-4 gap-2 rounded-2xl md:grid">
-        {images.map((url, index) => (
-          <li
-            key={url}
-            className={`relative aspect-[4/3] overflow-hidden bg-neutral-100 ${
-              index === 0 && images.length > 1 ? "col-span-2 row-span-2 aspect-auto" : ""
-            } ${single ? "col-span-4" : ""}`}
-          >
-            <Image
-              src={url}
-              alt={`${title}, photo ${index + 1} of ${totalImages}`}
-              fill
-              sizes={index === 0 ? "(min-width: 1152px) 544px, 50vw" : "(min-width: 1152px) 272px, 25vw"}
-              loading={index === 0 ? "eager" : "lazy"}
-              className="object-cover"
-            />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
+  return <PhotoGallery shown={shown} all={all} title={title} />;
 }
 
 function DetailSkeleton() {
