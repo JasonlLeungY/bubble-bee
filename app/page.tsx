@@ -20,6 +20,8 @@ type Supabase = Awaited<ReturnType<typeof createClient>>;
 const GRID_CLASS =
   "grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
 const PAGE_SIZE = 10;
+// The home page shows two jobs, to keep the first page clean. "See all" opens the rest.
+const HOME_JOB_COUNT = 2;
 const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
 const DEFAULT_RADIUS = 10;
 const MAX_PRICE = 10000;
@@ -501,11 +503,12 @@ async function JobSection({
     p_shifts: null,
     p_bundle: false,
     p_offset: 0,
-    p_limit: PAGE_SIZE,
+    p_limit: HOME_JOB_COUNT,
   });
   if (error || !data) return <LoadError />;
   if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
-  return <JobBoard jobs={data as JobCardData[]} mode={applyMode} />;
+  // Guests get up to 10 from the database whatever the limit, so cap it here too.
+  return <JobBoard jobs={(data as JobCardData[]).slice(0, HOME_JOB_COUNT)} mode={applyMode} />;
 }
 
 function ListingCards({ listings }: { listings: CardListing[] }) {

@@ -9,7 +9,7 @@ export default function JobBoard({ jobs, mode }: { jobs: JobCardData[]; mode: Ap
   const [open, setOpen] = useState<JobCardData | null>(null);
   return (
     <>
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {jobs.map((job) => (
           <li key={job.id}>
             <JobCard job={job} mode={mode} onOpen={setOpen} />
