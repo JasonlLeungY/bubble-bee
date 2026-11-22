@@ -17,6 +17,10 @@ import MessageLandlord from "@/components/MessageLandlord";
 import ContactButton, { type ContactStatus } from "./contact-button";
 
 const listedOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" });
+
+// Tenants see a few photos. Owners and administrators always see them all.
+const TENANT_PHOTO_LIMIT = 3;
+const TENANT_PHOTO_STATUSES: ContactStatus["kind"][] = ["can-contact", "existing", "mismatch", "gender"];
 const availableOn = new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeZone: "UTC" });
 
 export default function ListingPage({ params, searchParams }: PageProps<"/listings/[id]">) {
@@ -148,7 +152,11 @@ async function Listing({
           Changes saved.
         </p>
       )}
-      <Gallery images={images} title={listing.title} />
+      <Gallery
+        images={TENANT_PHOTO_STATUSES.includes(status.kind) ? images.slice(0, TENANT_PHOTO_LIMIT) : images}
+        totalImages={images.length}
+        title={listing.title}
+      />
 
       <div className="mt-8 grid grid-cols-1 gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
@@ -356,7 +364,7 @@ async function Listing({
 // last of those. Phones swipe through every photo, and a grid of all photos
 // is shown below on desktop when there are more than five.
 
-function Gallery({ images, title }: { images: string[]; title: string }) {
+function Gallery({ images, totalImages, title }: { images: string[]; totalImages: number; title: string }) {
   if (images.length === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-2xl bg-neutral-100 text-neutral-400 md:h-72">
@@ -375,6 +383,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
   }
 
   const single = images.length === 1;
+  const hidden = totalImages - images.length;
 
   return (
     <>
@@ -389,7 +398,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
           >
             <Image
               src={url}
-              alt={`${title}, photo ${index + 1} of ${images.length}`}
+              alt={`${title}, photo ${index + 1} of ${totalImages}`}
               fill
               sizes="88vw"
               loading={index === 0 ? "eager" : "lazy"}
@@ -398,6 +407,12 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
           </li>
         ))}
       </ul>
+
+      {hidden > 0 && (
+        <p className="mt-3 text-sm text-neutral-600">
+          Showing {images.length} of {totalImages} photos.
+        </p>
+      )}
 
       {/* Desktop: every photo once. The first photo is the large one. */}
       <ul className="hidden grid-cols-4 gap-2 rounded-2xl md:grid">
@@ -410,7 +425,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
           >
             <Image
               src={url}
-              alt={`${title}, photo ${index + 1} of ${images.length}`}
+              alt={`${title}, photo ${index + 1} of ${totalImages}`}
               fill
               sizes={index === 0 ? "(min-width: 1152px) 544px, 50vw" : "(min-width: 1152px) 272px, 25vw"}
               loading={index === 0 ? "eager" : "lazy"}
