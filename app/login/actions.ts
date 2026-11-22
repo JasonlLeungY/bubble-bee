@@ -103,6 +103,8 @@ export async function signUp(
   });
 
   if (error) {
+    // Do not reveal whether an address already has an account.
+    if (error.code === "user_already_exists") return { confirmEmail: email };
     return { error: error.message, fields };
   }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import { createListing, updateListing, type ListingState } from "@/app/dashboard/actions";
 import ImageUploader from "@/components/ImageUploader";
+import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import { GENDER_PREFERENCES } from "@/utils/gender";
 import { HOME_TYPES, PARKING_OPTIONS } from "@/utils/listing-form";
 
@@ -103,6 +104,8 @@ export default function ListingForm({
   const [imageUrls, setImageUrls] = useState<string[]>(savedUrls);
   const [uploading, setUploading] = useState(false);
   const submitted = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  useUnsavedChanges(formRef);
 
   const [state, formAction, saving] = useActionState(
     async (prevState: ListingState, formData: FormData) => {
@@ -132,7 +135,7 @@ export default function ListingForm({
   const initialBond = initial?.bond_amount != null ? String(initial.bond_amount) : undefined;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
       <fieldset>
         <legend className={labelClass}>Is this an entire home or a share house?</legend>
         <p className="mt-0.5 text-xs text-neutral-500">

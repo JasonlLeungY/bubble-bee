@@ -97,11 +97,17 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   const radiusParam = Number.parseInt(first(params.radius) ?? "", 10);
   const km = (RADIUS_OPTIONS as readonly number[]).includes(radiusParam) ? radiusParam : DEFAULT_RADIUS;
 
-  // The price range. A minimum above the maximum is ignored, with a message.
-  let min = parsePrice(first(params.min));
-  let max = parsePrice(first(params.max));
+  // The price range. A price that is not a number, or a minimum above the maximum, is ignored with a message.
+  const minRaw = (first(params.min) ?? "").trim();
+  const maxRaw = (first(params.max) ?? "").trim();
+  let min = parsePrice(minRaw);
+  let max = parsePrice(maxRaw);
   let priceProblem: string | null = null;
-  if (min !== null && max !== null && min > max) {
+  if ((minRaw && min === null) || (maxRaw && max === null)) {
+    priceProblem = "Enter prices between 0 and 10,000. Showing all prices.";
+    min = null;
+    max = null;
+  } else if (min !== null && max !== null && min > max) {
     priceProblem = "The minimum price is higher than the maximum. Showing all prices.";
     min = null;
     max = null;
@@ -268,9 +274,9 @@ function SearchForm({
   const inputClass =
     "mt-1.5 block rounded-lg border border-neutral-400 bg-white px-3.5 py-2.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900";
   return (
-    <form action="/" method="get" className="mt-6 flex flex-wrap items-end gap-3">
+    <form action="/" method="get" className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
       {category && <input type="hidden" name="category" value={category} />}
-      <label className="block text-sm font-semibold">
+      <label className="col-span-2 block text-sm font-semibold sm:col-auto">
         Suburb
         <input
           name="suburb"
@@ -279,7 +285,7 @@ function SearchForm({
           placeholder="For example Glebe"
           maxLength={80}
           autoComplete="off"
-          className={`${inputClass} w-56`}
+          className={`${inputClass} w-full sm:w-56`}
         />
         <datalist id="suburb-options">
           {suburbs.map((name) => (
@@ -289,7 +295,7 @@ function SearchForm({
       </label>
       <label className="block text-sm font-semibold">
         Within
-        <select name="radius" defaultValue={String(km)} className={inputClass}>
+        <select name="radius" defaultValue={String(km)} className={`${inputClass} w-full sm:w-auto`}>
           {RADIUS_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {option} km
@@ -299,6 +305,8 @@ function SearchForm({
       </label>
       <label className="block text-sm font-semibold">
         Min price a week
+        <div className="relative">
+          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
         <input
           name="min"
           type="number"
@@ -306,13 +314,16 @@ function SearchForm({
           min={0}
           max={MAX_PRICE}
           step={10}
-          placeholder="$0"
+          placeholder="0"
           defaultValue={min ?? ""}
-          className={`${inputClass} w-32`}
+          className={`${inputClass} w-full pl-8 sm:w-32`}
         />
+        </div>
       </label>
       <label className="block text-sm font-semibold">
         Max price a week
+        <div className="relative">
+          <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-base text-neutral-500">$</span>
         <input
           name="max"
           type="number"
@@ -322,12 +333,13 @@ function SearchForm({
           step={10}
           placeholder="No limit"
           defaultValue={max ?? ""}
-          className={`${inputClass} w-32`}
+          className={`${inputClass} w-full pl-8 sm:w-32`}
         />
+        </div>
       </label>
       <label className="block text-sm font-semibold">
         Sort by
-        <select name="sort" defaultValue={sort} className={inputClass}>
+        <select name="sort" defaultValue={sort} className={`${inputClass} w-full sm:w-auto`}>
           {SORTS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -337,14 +349,14 @@ function SearchForm({
       </label>
       <button
         type="submit"
-        className="hive cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+        className="hive col-span-2 min-h-11 cursor-pointer rounded-lg border border-neutral-900 px-4 py-2.5 text-sm font-semibold transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 sm:col-auto"
       >
         Search
       </button>
       {filtered && (
         <Link
           href={hrefFor({ category: category ?? undefined, filters: NO_FILTERS })}
-          className="py-2.5 text-sm font-semibold underline underline-offset-2"
+          className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2"
         >
           Clear
         </Link>
@@ -386,7 +398,7 @@ function Section({ title, href, children }: { title: string; href: string; child
     <section>
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-        <Link href={href} className="text-sm font-semibold underline underline-offset-2">
+        <Link href={href} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
           See all
         </Link>
       </div>
@@ -687,14 +699,14 @@ function Pager({ category, page, hasNext, filters }: { category: Category; page:
   return (
     <nav aria-label="Pages" className="mt-10 flex items-center justify-between gap-4 text-sm">
       {page > 1 ? (
-        <Link href={pageHref(page - 1)} className="font-semibold underline underline-offset-2">
+        <Link href={pageHref(page - 1)} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
           Previous page
         </Link>
       ) : (
         <span />
       )}
       {hasNext && (
-        <Link href={pageHref(page + 1)} className="font-semibold underline underline-offset-2">
+        <Link href={pageHref(page + 1)} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
           Next page
         </Link>
       )}

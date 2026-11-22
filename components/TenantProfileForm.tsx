@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useRef, type ReactNode } from "react";
+import { useUnsavedChanges } from "./useUnsavedChanges";
 import { saveTenantProfile, type TenantProfileState } from "@/app/dashboard/profile/actions";
 import { GENDERS, GENDER_PREFERENCES } from "@/utils/gender";
 import { TENANT_OPTIONS } from "@/utils/tenant-profile";
@@ -80,6 +81,8 @@ export default function TenantProfileForm({
   completed: boolean;
 }) {
   const [state, formAction, saving] = useActionState<TenantProfileState, FormData>(saveTenantProfile, {});
+  const formRef = useRef<HTMLFormElement>(null);
+  useUnsavedChanges(formRef);
 
   // After a failed save, show what was typed; otherwise show what is saved.
   const one = (name: string) => (state.fields ? state.fields[name]?.[0] ?? "" : initial[name]?.[0] ?? "");
@@ -87,7 +90,7 @@ export default function TenantProfileForm({
   const gender = (value: string) => one("gender") === value;
 
   return (
-    <form action={formAction} className="mt-6 space-y-10">
+    <form ref={formRef} action={formAction} className="mt-6 space-y-10">
       <header>
         <h1 className="text-[26px] leading-8 font-semibold tracking-tight">
           {completed ? "Your profile" : "Tell landlords about you"}
