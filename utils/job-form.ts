@@ -135,7 +135,8 @@ export function readJobForm(formData: FormData): { fields: JobFields; values: Jo
 
   let startDate: string | null = null;
   if (!fields.immediateStart) {
-    const today = new Date().toISOString().slice(0, 10);
+    // Today in South Australia, not UTC: for part of each morning there, the UTC date is a day behind.
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide" }).format(new Date());
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fields.startDate) || fields.startDate < today) {
       return fail("Choose a start date from today onwards, or tick Immediate start.");
     }

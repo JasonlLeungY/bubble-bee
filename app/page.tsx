@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import JobBoard from "@/components/JobBoard";
 import ModeSwitcher from "@/components/ModeSwitcher";
 import type { ApplyMode, JobCardData } from "@/components/JobCard";
-import { applyModeFor } from "@/utils/job-search";
+import { applyModeFor, markApplied } from "@/utils/job-search";
 import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
@@ -508,7 +508,9 @@ async function JobSection({
   if (error || !data) return <LoadError />;
   if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
   // Guests get up to 10 from the database whatever the limit, so cap it here too.
-  return <JobBoard jobs={(data as JobCardData[]).slice(0, HOME_JOB_COUNT)} mode={applyMode} />;
+  const found = (data as JobCardData[]).slice(0, HOME_JOB_COUNT);
+  const jobs = applyMode === "apply" ? await markApplied(supabase, found) : found;
+  return <JobBoard jobs={jobs} mode={applyMode} />;
 }
 
 function ListingCards({ listings }: { listings: CardListing[] }) {

@@ -62,16 +62,24 @@ export async function updateJob(jobId: string, _prevState: JobState, formData: F
   redirect("/dashboard");
 }
 
-export async function deleteJob(jobId: string): Promise<void> {
-  if (!UUID.test(jobId)) return;
+export type DeleteState = { error?: string };
+
+/** Only the poster can delete a job: Row Level Security allows deleting only their own. */
+export async function deleteJob(jobId: string): Promise<DeleteState> {
+  if (!UUID.test(jobId)) return { error: "This job is no longer available." };
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   if (!auth?.claims?.sub) redirect("/login");
 
-  // Row Level Security allows deleting only the poster's own jobs.
-  await supabase.from("job_posts").delete().eq("id", jobId);
+  // Asking for the deleted row back shows whether anything was removed.
+  const { data, error } = await supabase.from("job_posts").delete().eq("id", jobId).select("id");
+  if (error || !data || data.length === 0) {
+    return { error: "We could not delete this job. Try again." };
+  }
+
   revalidatePath("/jobs");
   revalidatePath("/dashboard");
+  return {};
 }
 
 export type ApplyState = { applied?: boolean; error?: string };

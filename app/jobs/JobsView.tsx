@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import JobBoard from "@/components/JobBoard";
 import JobFilterBar from "@/components/JobFilterBar";
 import ModeSwitcher from "@/components/ModeSwitcher";
 import type { JobCardData } from "@/components/JobCard";
-import { applyModeFor, jobHref, readJobFilters, resolveSearch } from "@/utils/job-search";
+import { applyModeFor, jobHref, markApplied, readJobFilters, resolveSearch } from "@/utils/job-search";
 import { viewerAccess, type ViewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
 const PAGE_SIZE = 10;
+// Keeps the database offset well inside its integer range.
+const MAX_PAGE = 1000;
 
 /**
  * The local jobs list, and the Work + Stay list (only jobs whose employer also
@@ -26,6 +29,7 @@ export default async function JobsView({
   const base = mode === "bundle" ? "/work-and-stay" : "/jobs";
   const filters = readJobFilters(params);
   const pageNumber = Math.max(1, Number.parseInt(String(Array.isArray(params.page) ? params.page[0] : params.page ?? "1"), 10) || 1);
+  if (pageNumber > MAX_PAGE) notFound();
 
   const supabase = await createClient();
   const access = await viewerAccess(supabase);
@@ -88,7 +92,8 @@ export default async function JobsView({
   });
 
   const hasNext = (data?.length ?? 0) > PAGE_SIZE;
-  const jobs = ((data ?? []) as JobCardData[]).slice(0, PAGE_SIZE);
+  const found = ((data ?? []) as JobCardData[]).slice(0, PAGE_SIZE);
+  const jobs = applyMode === "apply" ? await markApplied(supabase, found) : found;
   const summary = [
     filters.suburb ? `within ${filters.km} km of ${filters.suburb}` : null,
     filters.minRate !== null ? `from $${filters.minRate}/hr` : null,

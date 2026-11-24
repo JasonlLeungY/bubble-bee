@@ -46,7 +46,7 @@ export default function JobDetailDrawer({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <ApplyControl jobId={job.id} mode={mode} />
+              <ApplyControl jobId={job.id} mode={mode} applied={job.applied} />
               <button
                 type="button"
                 onClick={() => ref.current?.close()}
@@ -66,9 +66,11 @@ export default function JobDetailDrawer({
               <Link href={`/jobs/${job.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
                 Open the full job page
               </Link>
-              <Link href={`/jobs/${job.id}#message-employer`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
-                Message the employer
-              </Link>
+              {mode === "apply" && (
+                <Link href={`/jobs/${job.id}#message-employer`} className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+                  Message the employer
+                </Link>
+              )}
             </div>
           </div>
         </div>

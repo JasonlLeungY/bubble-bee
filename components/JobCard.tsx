@@ -31,6 +31,8 @@ export type JobCardData = {
   room_title: string | null;
   room_price: number | null;
   room_km: number | null;
+  /** True when the signed-in tenant has already applied. Set by the page that lists the job. */
+  applied?: boolean;
 };
 
 /** What the viewer may do with a job: sign in, finish the profile, apply, or nothing. */
@@ -51,7 +53,7 @@ function Chip({ children, tone = "neutral" }: { children: React.ReactNode; tone?
 }
 
 /** Apply in one tap, or a link to the step that comes first. */
-export function ApplyControl({ jobId, mode }: { jobId: string; mode: ApplyMode }) {
+export function ApplyControl({ jobId, mode, applied = false }: { jobId: string; mode: ApplyMode; applied?: boolean }) {
   if (mode === "signin") {
     return (
       <Link href="/signup?reason=details" className="inline-flex min-h-11 items-center rounded-lg border border-neutral-900 px-4 text-sm font-semibold hover:bg-neutral-50">
@@ -67,6 +69,10 @@ export function ApplyControl({ jobId, mode }: { jobId: string; mode: ApplyMode }
     );
   }
   if (mode === "none") return null;
+  // Already applied (from an earlier visit): say so, rather than offer to apply again.
+  if (applied && mode === "apply") {
+    return <span className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-800">Applied</span>;
+  }
   if (mode === "preview") {
     return (
       <button type="button" disabled className="inline-flex min-h-11 cursor-not-allowed items-center rounded-lg bg-neutral-200 px-4 text-sm font-semibold text-neutral-500">
@@ -178,7 +184,7 @@ export default function JobCard({
           </span>
           <span className="truncate font-medium">{job.employer}</span>
         </p>
-        <ApplyControl jobId={job.id} mode={mode} />
+        <ApplyControl jobId={job.id} mode={mode} applied={job.applied} />
       </div>
     </article>
   );

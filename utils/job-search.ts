@@ -93,6 +93,21 @@ export async function resolveSearch(
   }
 }
 
+/**
+ * Adds `applied` to each job: true where the signed-in tenant has already applied.
+ * Row Level Security returns only the viewer's own applications, so guests and
+ * employers get nothing marked.
+ */
+export async function markApplied<T extends { id: string }>(
+  supabase: Supabase,
+  jobs: T[],
+): Promise<(T & { applied: boolean })[]> {
+  if (jobs.length === 0) return [];
+  const { data } = await supabase.from("job_applications").select("job_id").in("job_id", jobs.map((job) => job.id));
+  const applied = new Set((data ?? []).map((row: { job_id: string }) => row.job_id));
+  return jobs.map((job) => ({ ...job, applied: applied.has(job.id) }));
+}
+
 /** What the viewer can do with a job, from their account. */
 export async function applyModeFor(supabase: Supabase, access: ViewerAccess): Promise<ApplyMode> {
   if (access === "guest") return "signin";

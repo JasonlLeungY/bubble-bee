@@ -79,11 +79,12 @@ async function Job({ params }: { params: Promise<{ id: string }> }) {
   const applyMode = await applyModeFor(supabase, access);
   const { data: applied } = await supabase.from("job_applications").select("id").eq("job_id", id).maybeSingle();
 
-  // The employer cannot message their own job. A tenant has at most one
-  // conversation about this job, so look for theirs.
+  // Only a tenant with a finished profile can message the employer, and never
+  // their own job. A tenant has at most one conversation about this job, so look
+  // for theirs.
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
-  const canMessage = userId !== undefined && userId !== row.poster_id;
+  const canMessage = applyMode === "apply" && userId !== undefined && userId !== row.poster_id;
   const { data: conversation } = canMessage
     ? await supabase.from("conversations").select("id").eq("job_id", id).eq("tenant_id", userId).maybeSingle()
     : { data: null };
