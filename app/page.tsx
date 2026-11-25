@@ -5,13 +5,12 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import JobBoard from "@/components/JobBoard";
 import ModeSwitcher from "@/components/ModeSwitcher";
-import type { ApplyMode, JobCardData } from "@/components/JobCard";
-import { applyModeFor, markApplied } from "@/utils/job-search";
+import type { ApplyMode } from "@/components/JobCard";
+import { applyModeFor, loadJobs, readJobFilters, readPage, resolveSearch, RADIUS_OPTIONS } from "@/utils/job-search";
 import { LifestyleBadges } from "@/components/Lifestyle";
 import SiteHeader from "@/components/SiteHeader";
 import { recordPageView } from "@/utils/analytics";
 import { formatPrice, listingImages } from "@/utils/listings";
-import { SUBURB_PATTERN, knownSuburb, verifyAustralianSuburb } from "@/utils/suburb-lookup";
 import { viewerAccess, type ViewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -22,8 +21,6 @@ const GRID_CLASS =
 const PAGE_SIZE = 10;
 // The home page shows two jobs, to keep the first page clean. "See all" opens the rest.
 const HOME_JOB_COUNT = 2;
-const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
-const DEFAULT_RADIUS = 10;
 const MAX_PRICE = 10000;
 
 const CATEGORIES = [
@@ -97,14 +94,12 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const requestedCategory = first(params.category);
   const category = CATEGORIES.find((option) => option.key === requestedCategory)?.key;
-  const requestedPage = first(params.page);
-  const page = Math.max(1, Number.parseInt(requestedPage ?? "1", 10) || 1);
+  const page = readPage(params);
 
-  // The suburb and distance.
-  const typed = (first(params.suburb) ?? "").trim();
-  const suburbText = SUBURB_PATTERN.test(typed) ? typed : "";
-  const radiusParam = Number.parseInt(first(params.radius) ?? "", 10);
-  const km = (RADIUS_OPTIONS as readonly number[]).includes(radiusParam) ? radiusParam : DEFAULT_RADIUS;
+  // The suburb and distance, read the same way as on the Local Jobs page.
+  const searchFilters = readJobFilters(params);
+  const suburbText = searchFilters.suburb;
+  const km = searchFilters.km;
 
   // The price range. A price that is not a number, or a minimum above the maximum, is ignored with a message.
   const minRaw = (first(params.min) ?? "").trim();
@@ -131,28 +126,8 @@ async function Feed({ searchParams }: { searchParams: SearchParams }) {
   const { data: suburbRows } = await supabase.rpc("browse_suburbs");
   const suburbs = (suburbRows ?? []).map((row: { suburb: string }) => row.suburb);
 
-  // Find the centre of the searched suburb. If it is not in Australia, say so.
-  let search: Search | null = null;
-  let searchProblem: string | null = null;
-  if (suburbText) {
-    try {
-      // Guests search only suburbs that are already on the map. Anyone else
-      // may trigger a paid lookup for a new suburb.
-      const point =
-        access === "guest" ? await knownSuburb(suburbText) : await verifyAustralianSuburb(suburbText);
-      if (point) {
-        search = { suburb: suburbText, km, lat: point.latitude, lng: point.longitude };
-      } else {
-        searchProblem =
-          access === "guest"
-            ? `Create an account to search for "${suburbText}", or pick a suburb that is already listed.`
-            : `We could not find "${suburbText}" in Australia. Check the suburb name.`;
-      }
-    } catch (error) {
-      console.error("Suburb search failed", error);
-      searchProblem = "We could not check that suburb just now. Try again in a moment.";
-    }
-  }
+  // The centre of the searched suburb, or why it could not be found.
+  const { search, problem: searchProblem } = await resolveSearch(searchFilters, access);
 
   const filters: Filters = { search, min, max, sort };
   const picker = (
@@ -493,24 +468,11 @@ async function JobSection({
   search: Search | null;
   applyMode: ApplyMode;
 }) {
-  const { data, error } = await supabase.rpc("find_jobs", {
-    p_lat: search?.lat ?? null,
-    p_lng: search?.lng ?? null,
-    p_km: search?.km ?? null,
-    p_types: null,
-    p_min_rate: null,
-    p_immediate: false,
-    p_shifts: null,
-    p_bundle: false,
-    p_offset: 0,
-    p_limit: HOME_JOB_COUNT,
-  });
-  if (error || !data) return <LoadError />;
-  if (data.length === 0) return <EmptyState message={emptyJobText(search)} />;
+  const jobs = await loadJobs(supabase, applyMode, { search, limit: HOME_JOB_COUNT });
+  if (!jobs) return <LoadError />;
+  if (jobs.length === 0) return <EmptyState message={emptyJobText(search)} />;
   // Guests get up to 10 from the database whatever the limit, so cap it here too.
-  const found = (data as JobCardData[]).slice(0, HOME_JOB_COUNT);
-  const jobs = applyMode === "apply" ? await markApplied(supabase, found) : found;
-  return <JobBoard jobs={jobs} mode={applyMode} />;
+  return <JobBoard jobs={jobs.slice(0, HOME_JOB_COUNT)} mode={applyMode} />;
 }
 
 function ListingCards({ listings }: { listings: CardListing[] }) {

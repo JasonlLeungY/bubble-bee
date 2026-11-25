@@ -1,17 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import JobBoard from "@/components/JobBoard";
 import JobFilterBar from "@/components/JobFilterBar";
 import ModeSwitcher from "@/components/ModeSwitcher";
-import type { JobCardData } from "@/components/JobCard";
-import { applyModeFor, jobHref, markApplied, readJobFilters, resolveSearch } from "@/utils/job-search";
+import { applyModeFor, jobHref, loadJobs, readJobFilters, readPage, resolveSearch } from "@/utils/job-search";
 import { viewerAccess, type ViewerAccess } from "@/utils/tenant-gate";
 import { createClient } from "@/utils/supabase/server";
 
 const PAGE_SIZE = 10;
-// Keeps the database offset well inside its integer range.
-const MAX_PAGE = 1000;
 
 /**
  * The local jobs list, and the Work + Stay list (only jobs whose employer also
@@ -26,10 +22,10 @@ export default async function JobsView({
 }) {
   await connection();
   const params = await searchParams;
-  const base = mode === "bundle" ? "/work-and-stay" : "/jobs";
+  const bundle = mode === "bundle";
+  const base = bundle ? "/work-and-stay" : "/jobs";
   const filters = readJobFilters(params);
-  const pageNumber = Math.max(1, Number.parseInt(String(Array.isArray(params.page) ? params.page[0] : params.page ?? "1"), 10) || 1);
-  if (pageNumber > MAX_PAGE) notFound();
+  const page = readPage(params);
 
   const supabase = await createClient();
   const access = await viewerAccess(supabase);
@@ -38,18 +34,16 @@ export default async function JobsView({
   const suburbs = (suburbRows ?? []).map((row: { suburb: string }) => row.suburb);
   const { search, problem } = await resolveSearch(filters, access);
 
-  const heading = mode === "bundle" ? "Work + Stay" : "Local jobs";
-  const intro =
-    mode === "bundle"
-      ? "Jobs from employers who also have a room within 25 km. Work close to home."
-      : "Newest first. Pick a suburb, job type or shift to narrow the list.";
-
   const header = (
     <>
-      <h1 className="text-[26px] leading-8 font-semibold tracking-tight">{heading}</h1>
-      <p className="mt-1 text-sm text-neutral-500">{intro}</p>
+      <h1 className="text-[26px] leading-8 font-semibold tracking-tight">{bundle ? "Work + Stay" : "Local jobs"}</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        {bundle
+          ? "Jobs from employers who also have a room within 25 km. Work close to home."
+          : "Newest first. Pick a suburb, job type or shift to narrow the list."}
+      </p>
       <div className="mt-6">
-        <ModeSwitcher active={mode === "bundle" ? "bundle" : "jobs"} />
+        <ModeSwitcher active={bundle ? "bundle" : "jobs"} />
       </div>
       <div className="mt-6">
         <JobFilterBar base={base} filters={filters} suburbs={suburbs} />
@@ -61,14 +55,12 @@ export default async function JobsView({
     return (
       <>
         {header}
-        <p role="alert" className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-6 text-sm text-rose-800">
-          {problem}
-        </p>
+        <Alert>{problem}</Alert>
       </>
     );
   }
 
-  if (pageNumber > 1 && access !== "full") {
+  if (page > 1 && access !== "full") {
     return (
       <>
         {header}
@@ -77,63 +69,68 @@ export default async function JobsView({
     );
   }
 
-  // One extra row tells us whether there is a next page. Guests get the first 10 only.
-  const { data, error } = await supabase.rpc("find_jobs", {
-    p_lat: search?.lat ?? null,
-    p_lng: search?.lng ?? null,
-    p_km: search?.km ?? null,
-    p_types: filters.types.length ? filters.types : null,
-    p_min_rate: filters.minRate,
-    p_immediate: filters.immediate,
-    p_shifts: filters.shifts.length ? filters.shifts : null,
-    p_bundle: mode === "bundle",
-    p_offset: (pageNumber - 1) * PAGE_SIZE,
-    p_limit: PAGE_SIZE + 1,
+  // One extra job tells us whether there is a next page. Guests get the first 10 only.
+  const found = await loadJobs(supabase, applyMode, {
+    search,
+    types: filters.types,
+    minRate: filters.minRate,
+    immediate: filters.immediate,
+    shifts: filters.shifts,
+    bundle,
+    offset: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE + 1,
   });
+  if (!found) {
+    return (
+      <>
+        {header}
+        <Alert>We could not load the jobs just now. Refresh the page to try again.</Alert>
+      </>
+    );
+  }
 
-  const hasNext = (data?.length ?? 0) > PAGE_SIZE;
-  const found = ((data ?? []) as JobCardData[]).slice(0, PAGE_SIZE);
-  const jobs = applyMode === "apply" ? await markApplied(supabase, found) : found;
+  const hasNext = found.length > PAGE_SIZE;
+  const jobs = found.slice(0, PAGE_SIZE);
   const summary = [
     filters.suburb ? `within ${filters.km} km of ${filters.suburb}` : null,
     filters.minRate !== null ? `from $${filters.minRate}/hr` : null,
     filters.immediate ? "starting straight away" : null,
   ].filter(Boolean);
+  const count = jobs.length === 1 ? "1 job" : `${jobs.length} jobs`;
 
   return (
     <>
       {header}
-      {error && (
-        <p role="alert" className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-6 text-sm text-rose-800">
-          We could not load the jobs just now. Refresh the page to try again.
-        </p>
-      )}
-      {!error && (
-        <>
-          <p className="mt-8 text-sm text-neutral-600">
-            {jobs.length === 0 ? "No jobs match these filters." : `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}${summary.length ? `, ${summary.join(", ")}` : ""}.`}
-          </p>
-          <div className="mt-4">
-            <JobBoard jobs={jobs} mode={applyMode} />
-          </div>
-          <nav aria-label="Pages" className="mt-10 flex items-center justify-between gap-4 text-sm">
-            {pageNumber > 1 ? (
-              <Link href={jobHref(base, filters, { page: String(pageNumber - 1) })} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
-                Previous page
-              </Link>
-            ) : (
-              <span />
-            )}
-            {hasNext && (
-              <Link href={jobHref(base, filters, { page: String(pageNumber + 1) })} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
-                Next page
-              </Link>
-            )}
-          </nav>
-          {access !== "full" && <AccessNote access={access} />}
-        </>
-      )}
+      <p className="mt-8 text-sm text-neutral-600">
+        {jobs.length === 0 ? "No jobs match these filters." : `${count}${summary.length ? `, ${summary.join(", ")}` : ""}.`}
+      </p>
+      <div className="mt-4">
+        <JobBoard jobs={jobs} mode={applyMode} />
+      </div>
+      <nav aria-label="Pages" className="mt-10 flex items-center justify-between gap-4 text-sm">
+        {page > 1 ? (
+          <Link href={jobHref(base, filters, { page: String(page - 1) })} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
+            Previous page
+          </Link>
+        ) : (
+          <span />
+        )}
+        {hasNext && (
+          <Link href={jobHref(base, filters, { page: String(page + 1) })} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2">
+            Next page
+          </Link>
+        )}
+      </nav>
+      {access !== "full" && <AccessNote access={access} />}
     </>
+  );
+}
+
+function Alert({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-6 text-sm text-rose-800">
+      {children}
+    </p>
   );
 }
 
